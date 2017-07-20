@@ -10,7 +10,6 @@ from math import isnan
 
 sbmlns = SBMLNamespaces(3,1,"fbc",1);
 
-
 class ObjectiveFunction:
         def __init__(self):
             self.type=None
@@ -50,11 +49,11 @@ class SBMLloader(object):
         except: print "WARNING: directory", OUTPATH, "already exists"
 
 
-    def get_initial_amounts(self, verbose=False):        
+    def get_initial_amounts(self, verbose=True):        
         
         ini = []
 
-        # print " * Detected", len(self.model.getListOfSpecies()), "species"
+        print " * Detected", len(self.model.getListOfSpecies()), "species"
 
         n = 0
         for species in self.model.getListOfSpecies(): 
@@ -359,8 +358,8 @@ if __name__ == '__main__':
     INPUT_FILE = "Breast_core.xml"
     OUTPUT_FOLDER = "./output_marzia"
 
-    if len(sys.argv)>1: INPUT_FILE = argv[1]
-    if len(sys.argv)>2: INPUT_FILE = argv[2]
+    if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
+    if len(sys.argv)>2: INPUT_FILE = sys.argv[2]
 
     SL = SBMLloader(INPUT_FILE)  
     SL.convert_to_biosimware(OUTPUT_FOLDER)
