@@ -9,14 +9,17 @@ from numpy import savetxt
 from math import isnan
 
 """
+This is the python3 version of the script to convert SBML to
+biosimware. Already tested.
+
 SBML to BioSimWare conversion.
 TODO:   - assignment rules
         - non mass-action kinetics
         - compartments and re-labeling
         - feeds loaded from SBML
         - FBA
-"""
 
+"""
 
 sbmlns = SBMLNamespaces(3,1,"fbc",1);
 
