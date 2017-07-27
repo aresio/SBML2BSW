@@ -43,7 +43,7 @@ class species(SBML_Object):
     def __init__(self,spe):
         super(species,self).__init__(spe)
 
-        self.boundiaryCondition = getBoundaryCondition()
+        self.boundaryCondition = spe.getBoundaryCondition()
         self.compartment = spe.getCompartment()
         self.spec_con = spe.getConstant()
         #Da verificare se lasciare le units qui o tenerla nella classe con
@@ -61,6 +61,7 @@ class parameter(SBML_Object):
         super(parameter,self).__init__(par)
         self.par_const = par.getConstant()
         self.value = par.getValue()
+        self.sbo = par.getSBOTermID()
 
 class compartment(SBML_Object):
     """
@@ -92,32 +93,40 @@ class reaction(SBML_Object):
     """
     def __init__(self,rt):
         super(reaction,self).__init__(rt)
-        self.kin_law = rt.getKineticLaw()        
+        self.kin_law = rt.getKineticLaw()
+        self.react_list = rt.getListOfReactants()
+        
 #===== END =====    
 
 #==== Function definitions ====
 #For now functions, for testing purpose
 def react(model):
-
-    #Sistemare name (riga 167 versione python3)
-    #sfruttare classe specie
-
+    #dictionary id-name
+    id2name = {}
+    
+    #list of all species
+    Species_list=[]
+    for chem in model.getListOfSpecies():
+        Species_list.append(chem)
+   
+    #Maniputlating the reactants of each reaction
     for i in model.getListOfReactions():
-
         rc = reaction(i)
-        if rc.kin_law != None:
-
-            print ("vvv===========")
-            print (rc.kin_law.getListOfParameters())
-            print ("^^^===========")
-
-            if len(rc.kin_law.getListOfParameters())==0:
-                nomi_parametri = [name.getId() for rc.name in model.getListOfParameters()]
-                parameters_in_kineticaw = re.findall(r"[\w']+", react.getKineticLaw().getFormula())
-                parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
-                parameters_in_kineticaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticaw ))
-
-                print (react.getName(), "PIKL:", parameters_in_kineticaw)
+        for i in rc.react_list:
+            alias = i.getSpecies()
+            #vvv==Messed up, to be cleaned
+            #according to the previous versions
+            for j in Species_list:
+                sp=species(j)
+                if str(sp.ID) == alias:
+                    fullname = sp.name
+                    if fullname == "":
+                        fullname = sp.ID
+                    if sp.compartment != "":
+                        fullname = fullname + "_in_"+sp.compartment
+                    id2name[sp.ID] = fullname
+    print (id2name)
+                    
 #==== END ====
 
 react(model)
