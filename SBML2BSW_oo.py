@@ -15,6 +15,8 @@ It's written in python 3.
 THIS VERSION IS UNDER DEVELOPEMENT!
 """
 
+#FIX the REACTACT MATRICE
+
 #===This part is to conduct the test===
 #create a model object
 
@@ -95,38 +97,84 @@ class reaction(SBML_Object):
         super(reaction,self).__init__(rt)
         self.kin_law = rt.getKineticLaw()
         self.react_list = rt.getListOfReactants()
+        self.prod_list = rt.getListOfProducts()
         
 #===== END =====    
 
 #==== Function definitions ====
 #For now functions, for testing purpose
 def react(model):
-    #dictionary id-name
-    id2name = {}
+
+    LEFT = []
+    RIGHT = []
     
-    #list of all species
+    #list of all species for now, a species object is created for each
+    #object in the model. With models with a lot of reactants it's not
+    #good.
+    
     Species_list=[]
+    Species_ID=[]
     for chem in model.getListOfSpecies():
-        Species_list.append(chem)
-   
+        a=species(chem)
+        Species_list.append(a)
+        Species_ID.append(a.ID)
+
+    reactants_vetctor=[]
     #Maniputlating the reactants of each reaction
     for i in model.getListOfReactions():
+        tmp_reactants = [0] * len(Species_list)
         rc = reaction(i)
         for i in rc.react_list:
             alias = i.getSpecies()
-            #vvv==Messed up, to be cleaned
-            #according to the previous versions
-            for j in Species_list:
-                sp=species(j)
-                if str(sp.ID) == alias:
-                    fullname = sp.name
-                    if fullname == "":
-                        fullname = sp.ID
-                    if sp.compartment != "":
-                        fullname = fullname + "_in_"+sp.compartment
-                    id2name[sp.ID] = fullname
-    print (id2name)
+            index = Species_ID.index(alias)
+            if alias in Species_ID:
+                spe  = Species_list[index]
+                fullname = spe.name
+                if fullname == "":
+                    fullname = spe.D
+                if spe.compartment != "":
+                    fullname = fullname + "_in_"+spe.compartment
+                sto = i.getStoichiometry()
+                tmp_reactants[index] = int(sto)
+            else:
+                tmp_reactants[index] = 0
                     
+            print (tmp_reactants)
+
+            LEFT.append(tmp_reactants)
+    print (LEFT)
+    
+    numpy.savetxt("left_side", LEFT, fmt="%d", delimiter="\t") 
+    
+    products_vetctor=[]
+    #Maniputlating the products of each reaction
+    for i in model.getListOfReactions():
+        tmp_products = [0] * len(Species_list)
+        rc = reaction(i)
+        if rc.prod_list != "":
+            for i in rc.prod_list:
+                alias = i.getSpecies()
+                index = Species_ID.index(alias)
+                if alias in Species_ID:
+                    spe  = Species_list[index]
+                    fullname = spe.name
+                    if fullname == "":
+                        fullname = spe.D
+                    if spe.compartment != "":
+                        fullname = fullname + "_in_"+spe.compartment
+                        sto = i.getStoichiometry()
+                        tmp_products[index] = int(sto)
+                    else:
+                        tmp_products[index] = 0
+                else:
+                    for index in len(Species_ID)-1:
+                        tmp_products[index] = 0
+                    
+            print (tmp_products)
+
+            RIGHT.append(tmp_products)
+    print (RIGHT)
+    numpy.savetxt("right_side", RIGHT, fmt="%d", delimiter="\t") 
 #==== END ====
 
 react(model)
