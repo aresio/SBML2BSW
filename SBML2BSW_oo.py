@@ -52,7 +52,7 @@ class species(SBML_Object):
         #il metodo per lanciare il tutto
         self.units = spe.getSubstanceUnits()
         self.conc = spe.getInitialConcentration()
-        
+        self.amount= spe.getInitialAmount()
 
 class parameter(SBML_Object):
     """
@@ -131,25 +131,38 @@ def react(model,OUTPATH):
     Species_list=[]
     Species_ID=[]
     
-
     for chem in model.getListOfSpecies():
         a=species(chem)
         Species_list.append(a)
         Species_ID.append(a.ID)
+        
+        #--prepare alphabet
+        if a.name != "":
+            Alph_element = a.name+"_in_"+a.compartment
+        else:
+            Alph_element = a.ID+"_in_"+a.compartment
 
-        #prepare alphabet
-        Alph_element = a.name+"_in_"+a.compartment
         ALPHABET.append(Alph_element)
 
-        #prepare initial amount
-        IN_AMOUNT.append(a.conc)
+        #--prepare initial amount
 
-        #prepare M_feed
+        amount=0
+        if isnan(a.amount):
+            print("isnan")
+            amount=float(a.conc)
+            print(amount)
+        else:
+            print("is a num")
+            amount=float(a.amount)
+            print(amount)
+            
+        IN_AMOUNT.append(amount)
+
+        #--prepare M_feed
         if a.spec_con:            
             M_FEED.append(a.spec_con)
         else:
             M_FEED.append(a.spec_con)
-
 
     #----Maniputlating the reactants of each reaction
     for j in model.getListOfReactions():
@@ -246,14 +259,8 @@ def react(model,OUTPATH):
                 else:
                     PARAMS.append(p.getValue())
             else:
-                for p in react.getKineticLaw().getListOfParameters():
+                for p in rc.kin_law.getListOfParameters():
                     PARAMS.append(p.getValue())
-
-
-    else:
-            print ("Nope")
-                                        
-
     
     os.chdir(OUTPUT_FOLDER)
     numpy.savetxt("c_vector", numpy.array(PARAMS),fmt="%e", delimiter="\t")
