@@ -21,8 +21,8 @@ THIS VERSION IS UNDER DEVELOPEMENT!
 #create a model object
 
 model = None
-sbml = libsbml.SBMLReader().readSBML("Dismutase.xml")
-model = sbml.getModel()
+#sbml = libsbml.SBMLReader().readSBML("Dismutase.xml")
+#model = sbml.getModel()
 #=== END ===
 
 
@@ -98,6 +98,7 @@ class reaction(SBML_Object):
         self.kin_law = rt.getKineticLaw()
         self.react_list = rt.getListOfReactants()
         self.prod_list = rt.getListOfProducts()
+        self.rev = rt.getReversible()
         
 #===== END =====    
 
@@ -106,6 +107,7 @@ def create_folder(OUTPATH):
     """
     Creates the specified output folder
     """
+    wd = os.path.dirname(__file__)
     try: os.mkdir(OUTPATH)
     except: print ("WARNING: directory", OUTPATH, "already exists")
 
@@ -119,6 +121,7 @@ def react(model,OUTPATH):
     C_VECT = []
     IN_AMOUNT = []
     M_FEED = []
+    PARAMS = []
     #---- end ----
     
     #list of all species for now, a species object is created for each
@@ -128,7 +131,7 @@ def react(model,OUTPATH):
     Species_list=[]
     Species_ID=[]
     
-    
+
     for chem in model.getListOfSpecies():
         a=species(chem)
         Species_list.append(a)
@@ -142,25 +145,16 @@ def react(model,OUTPATH):
         IN_AMOUNT.append(a.conc)
 
         #prepare M_feed
-        if a.spec_con:
-            M_FEED.append(1)
-            print("1")
+        if a.spec_con:            
+            M_FEED.append(a.spec_con)
         else:
-            M_FEED.append(0)
-            print("0")
-    print (M_FEED)
+            M_FEED.append(a.spec_con)
 
-    for par in model.getListOfParameters():
-        Parameter=parameter(par)
-#        print (Parameter.value)
-        C_VECT.append(Parameter.value)
 
-    
-    reactants_vetctor=[]
-    #Maniputlating the reactants of each reaction
+    #----Maniputlating the reactants of each reaction
     for j in model.getListOfReactions():
-        tmp_reactants = [0] * len(Species_list)
-        rc = reaction(j)        
+        tmp_reactants = numpy.zeros(len(Species_list))
+        rc = reaction(j)
         for i in rc.react_list:
             alias = i.getSpecies()
             index = Species_ID.index(alias)
@@ -173,11 +167,9 @@ def react(model,OUTPATH):
 
         LEFT.append(tmp_reactants)
     
-    products_vetctor=[]
-    #Maniputlating the products of each reaction
-    for i in model.getListOfReactions():
-        tmp_products = [0] * len(Species_list)
-        rc = reaction(i)
+    #----Maniputlating the products of each reaction
+    
+        tmp_products =  numpy.zeros(len(Species_list))
         if rc.prod_list != "":
             for i in rc.prod_list:
                 alias = i.getSpecies()
@@ -194,17 +186,91 @@ def react(model,OUTPATH):
                         tmp_products[index] = 0
 
             RIGHT.append(tmp_products)
-            
+
+        if rc.kin_law != None:
+            if len(rc.kin_law.getListOfParameters())==0:
+                nomi_parametri = [par.getId() for par in model.getListOfParameters() ]
+                parameters_in_kineticaw = re.findall(r"[\w']+", rc.kin_law.getFormula())
+                parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
+                #filter object in python3 don't have len attribute, converting to string
+                parameters_in_kineticaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticaw))
+                print(parameters_in_kineticaw)
+                if len(parameters_in_kineticaw)==0:
+                    print ("parameters_in_kineticaw==0")
+                    print ("ERROR: can't find any kinetic parameters for reaction", rc.name)
+                    exit(-3)
+                elif rc.rev:
+                    #print "WARNING: detected reversible reaction by getReversible", reaction_name
+                    create_reverse = True
+                elif len(list(parameters_in_kineticaw))==2:
+                    print ("WARNING: detected two parameters in kinetic law of reaction", rc.name, ", assuming reversible reaction")
+                    create_reverse = True
+                elif len(list(parameters_in_kineticaw))==1:
+                    pass
+                else:
+                    print ("ERROR: too many parameters in kinetic law, aborting")
+                    exit(-3)
+                    
+                for el in parameters_in_kineticaw:                   
+                    p = model.getParameter(el)
+                    
+                    print (len(parameters_in_kineticaw), p)
+                    
+                    if p.getValue()==0:
+                        if not p.constant:
+                            print ("WARNING: non constant parameter, assignment rule?")
+                            if model.getListOfRules().get(p.getName()).isParameter():
+                                # print " * Rule for parameter", p.getName(), "detected"
+                                # print " * Rule implemented as", self.model.getListOfRules().get("k1").getFormula()
+                                tokenized_rule = model.getListOfRules().get("k1").getFormula()
+                                if tokenized_rule[0:8] == 'stepfunc':
+                                    tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                    tokenized_rule = tokenized_rule.replace(")", "")
+                                    tokenized_rule = tokenized_rule.replace(",", "")
+                                    tokenized_rule =  tokenized_rule.split()
+                                    temp = 0
+                                for token in tokenized_rule:                                       
+                                    try:
+                                        temp = float(token)
+                                        if temp>0:
+                                            break
+                                    except: 
+                                        pass
+                                    #print token, "is NAN"
+                                    
+                                PARAMS.append(temp)                
+                                #print p.getName(), float(token)
+                        else:
+                            #print "WARNING: constant value set to 0, parameter:", p.getName()
+                            PARAMS.append(temp)           
+                else:
+                    PARAMS.append(p.getValue())
+            else:
+                for p in react.getKineticLaw().getListOfParameters():
+                    PARAMS.append(p.getValue())
+
+
+    else:
+            print ("Nope")
+                                        
+
+    
     os.chdir(OUTPUT_FOLDER)
+    numpy.savetxt("c_vector", numpy.array(PARAMS),fmt="%e", delimiter="\t")
     numpy.savetxt("alphabet", ALPHABET,fmt="%s", delimiter="\t",newline="\t")
     numpy.savetxt("M_0",IN_AMOUNT,fmt="%e", delimiter="\t",newline="\t")
     numpy.savetxt("M_feed",M_FEED,fmt="%d", delimiter="\t",newline="\t")
-    numpy.savetxt("c_vector",C_VECT,fmt="%e",delimiter="\t")
     numpy.savetxt("left_side", LEFT, fmt="%d", delimiter="\t") 
     numpy.savetxt("right_side", RIGHT, fmt="%d", delimiter="\t") 
 #==== END ====
 
-OUTPUT_FOLDER = "./output"
+if __name__ == '__main__':
+    OUTPUT_FOLDER = "./output"
 
-create_folder(OUTPUT_FOLDER)
-react(model,OUTPUT_FOLDER)
+    if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
+
+    sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
+    model = sbml.getModel()
+
+    create_folder(OUTPUT_FOLDER)
+    react(model,OUTPUT_FOLDER)
