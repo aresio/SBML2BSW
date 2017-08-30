@@ -1,5 +1,5 @@
 *~
 test_input/
 test_conv/
-output/
+output*
 SBML2BSW_oo_cl.py

@@ -91,15 +91,7 @@ class reaction(SBML_Object):
 
 #===== END =====    
 
-#==== Function definitions ====
-# def create_folder(OUTPATH):
-#     """
-#     Creates the specified output folder
-#     """
-#     wd = os.path.dirname(__file__)
-#     try: os.mkdir(OUTPATH)
-#     except: print ("WARNING: directory", OUTPATH, "already exists")
-
+#==== Useful Functions ====
 def separator():
     print ("")
     print ("="*100)
@@ -165,15 +157,18 @@ class SBML2BSW():
             
             if a.spec_con:
                 self.M_FEED.append(a.spec_con)
+            else:
+                self.M_FEED.append(int(0))
 
         #----Maniputlating the reactants of each reaction
         
         for react in model.getListOfReactions():
             
-            tmp_reactants = numpy.zeros(len(self.Species_list))
-            tmp_products = numpy.zeros(len(self.Species_list))
-            
+            tmp_reactants =[0]*(len(self.Species_list))
+            tmp_products = [0]*(len(self.Species_list))
+            create_reverse = False
             rc = reaction(react)
+            self.REACT_NAME.append(rc.ID)
             for single_react in rc.react_list:
                 react_species = single_react.getSpecies()
                 index = self.Species_ID.index(react_species)
@@ -204,17 +199,19 @@ class SBML2BSW():
                     parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticaw))
-                    print(parameters_in_kineticaw)
+                    
                     if len(parameters_in_kineticaw)==0:
                         print ("parameters_in_kineticaw==0")
-                        print ("ERROR: can't find any kinetic parameters for reaction", rc.name)
+                        print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
                     elif rc.rev:
-                        #print "WARNING: detected reversible reaction by getReversible", reaction_name
+                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
+                        self.rev_par=self.model.getParameter(parameters_in_kineticaw[0]).getValue()
                     elif len(list(parameters_in_kineticaw))==2:
-                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.name, ", assuming reversible reaction")
+                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
+                        self.rev_par=self.model.getParameter(parameters_in_kineticaw[1]).getValue()
                     elif len(list(parameters_in_kineticaw))==1:
                         pass
                     else:
@@ -222,42 +219,55 @@ class SBML2BSW():
                         exit(-3)
                     
                     for el in parameters_in_kineticaw:                   
-                        p = self.model.getParameter(el)
-                        print (len(parameters_in_kineticaw), p)
-                        
-                        if p.getValue()==0:
-                            if not p.constant:
-                               print ("WARNING: non constant parameter, assignment rule?")
-                               if model.getListOfRules().get(p.getName()).isParameter():
-                                   # print " * Rule for parameter", p.getName(), "detected"
-                                   # print " * Rule implemented as", self.model.getListOfRules().get("k1").getFormula()
-                                   tokenized_rule = model.getListOfRules().get("k1").getFormula()
-                                   if tokenized_rule[0:8] == 'stepfunc':
-                                       tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                       tokenized_rule = tokenized_rule.replace(")", "")
-                                       tokenized_rule = tokenized_rule.replace(",", "")
-                                       tokenized_rule =  tokenized_rule.split()
-                                       temp = 0
-                                   for token in tokenized_rule:                                       
-                                       try:
-                                           temp = float(token)
-                                           if temp>0:
-                                               break
-                                       except: 
-                                           pass
-                                       #print token, "is NAN"
+                        p=parameter(self.model.getParameter(el))
 
-                                   self.PARAMS.append(temp)                
-                                   #print p.getName(), float(token)
+                        if p.value==0:
+                            if not p.par_const:
+                                print ("reaction",rc.name)
+                                print (p.value)
+                                print ("WARNING: non constant parameter, assignment rule?")
+                                for i in model.getListOfRules():
+                                    name=i.getId()
+                                    formula=i.getFormula()
+                                    print (formula)
+                                
+                                # if model.getListOfRules().get(p.getName()).isParameter():
+                                #     # print " * Rule for parameter", p.getName(), "detected"
+                                #     # print " * Rule implemented as", self.model.getListOfRules().get("k1").getFormula()
+                                #     tokenized_rule = model.getListOfRules().get().getFormula()
+                                #     if tokenized_rule[0:8] == 'stepfunc':
+                                #         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                #         tokenized_rule = tokenized_rule.replace(")", "")
+                                #     tokenized_rule = tokenized_rule.replace(",", "")
+                                #     tokenized_rule =  tokenized_rule.split()
+                                #     temp = 0
+                                #     for token in tokenized_rule:                                       
+                                #         try:
+                                #             temp = float(token)
+                                #             if temp>0:
+                                #                 break
+                                #         except: 
+                                #             pass
+                                #         #print token, "is NAN"
+
+                                #     self.PARAMS.append(temp)                
+                                #     #print p.getName(), float(token)
+                            else:
+                                print ("WARNING: constant value set to 0, parameter:", p.getName())
+                                self.PARAMS.append(temp)           
                         else:
-                            #print "WARNING: constant value set to 0, parameter:", p.getName()
-                            self.PARAMS.append(temp)           
-                    else:
-                        self.PARAMS.append(p.getValue())
+                            self.PARAMS.append(p.value)
                 else:
                     for p in rc.kin_law.getListOfParameters():
-                        self.PARAMS.append(p.getValue())
+                        self.PARAMS.append(p.value)
 
+                if create_reverse:
+                    self.LEFT.append(tmp_products)
+                    self.RIGHT.append(tmp_reactants)
+                    # verify if reverse parameters are needed
+                    self.PARAMS.append(float(self.rev_par))
+                    self.REACT_NAME.append("rev-"+rc.ID)
+                    
 
     def save(self):
         os.chdir(self.out)
@@ -265,7 +275,7 @@ class SBML2BSW():
         numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", delimiter="\t",newline="\t")
         numpy.savetxt("M_feed",self.M_FEED,fmt="%d", delimiter="\t",newline="\t")
         numpy.savetxt("left_side", self.LEFT, fmt="%d", delimiter="\t")
-        numpy.savetxt("right_side", self.RIGHT, fmt="%d", delimiter="\t")
+        numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
         numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
         os.chdir(SBML2BSW.wd)
 
@@ -292,6 +302,10 @@ if __name__ == '__main__':
     SB.save()
     
     separator()
+
+    print("Reaction Names",SB.REACT_NAME)
+    
+    separator()
     
     print("PSA chemical species",SB.ALPHABET)
 
@@ -301,7 +315,7 @@ if __name__ == '__main__':
 
     separator()
 
-    print(SB.M_FEED)
+    print("Feed Species",SB.M_FEED)
 
     separator()
 
@@ -313,6 +327,6 @@ if __name__ == '__main__':
 
     separator()
 
-    print(SB.PARAMS)
+    print("Parameters Vector",SB.PARAMS)
 
     separator()
