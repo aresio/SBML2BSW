@@ -264,9 +264,9 @@ class SBML2BSW():
                 if create_reverse:
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
+                    self.REACT_NAME.append(rc.ID + " (reverse)")
                     # verify if reverse parameters are needed
-                    self.PARAMS.append(float(self.rev_par))
-                    self.REACT_NAME.append("rev-"+rc.ID)
+                    #self.PARAMS.append(float(self.rev_par))
                     
 
     def save(self):
