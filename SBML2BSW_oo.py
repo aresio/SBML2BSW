@@ -253,7 +253,7 @@ class SBML2BSW():
                                 #     self.PARAMS.append(temp)                
                                 #     #print p.getName(), float(token)
                             else:
-                                print ("WARNING: constant value set to 0, parameter:", p.getName())
+                                print ("WARNING: constant value set to 0, parameter:", p.name)
                                 self.PARAMS.append(temp)           
                         else:
                             self.PARAMS.append(p.value)
@@ -287,18 +287,18 @@ class SBML2BSW():
 
 if __name__ == '__main__':
 
-    AA = None
+    MODEL = None
 
     OUTPUT_FOLDER = "./output"
 
     if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
 
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
-    AA = sbml.getModel()
+    MODEL = sbml.getModel()
 
-    SB=SBML2BSW(AA,OUTPUT_FOLDER)
+    SB=SBML2BSW(MODEL,OUTPUT_FOLDER)
     SB.create_folder()
-    SB.react(AA)
+    SB.react(MODEL)
     SB.save()
     
     separator()
