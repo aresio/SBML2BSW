@@ -8,13 +8,6 @@ import re
 from numpy import savetxt
 from math import isnan
 
-"""
-This is the object Oriented version of SBML2BSW.
-It's written in python 3.
-
-THIS VERSION IS UNDER DEVELOPEMENT!
-"""
-
 #===== Constructors Definitions =====
 class SBML_Object(object):
     """
@@ -105,7 +98,6 @@ class SBML2BSW():
         self.model=model
         self.out=OUTPATH
 
-
     wd=os.path.dirname(os.path.abspath(__file__))
 
     def create_folder(self):
@@ -116,7 +108,7 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
         
-    def react(self,model):
+    def react(self,model,use_fba=False):
 
         #list needed
         self.ALPHABET = []
@@ -127,8 +119,29 @@ class SBML2BSW():
         self.LEFT = []
         self.RIGHT = []
         self.PARAMS = []
-
         self.REACT_NAME = []
+        self.BOUNDIARIES = []
+        self.FLUX_BOUND = []
+        
+        #-- Am I using fba?
+        #NB: comes directly from the old version
+        if use_fba:
+            # FBA stuff
+            fbc = self.model.getPlugin("fbc")
+            print (" * Detected objectives:", fbc.getNumObjectives())
+            for o in xrange(fbc.getNumObjectives()):
+                OF = ObjectiveFunction()
+                SBOf = fbc.getObjective(o)
+                OF.name = SBOf.getName()
+                OF.ID = SBOf.getId()
+                OF.type = SBOf.getType()
+                print (" * Objective function detected:", OF.type, OF.ID)
+                # for ofl_ in range(SBOf.getNumFluxObjectives()):
+                #    print ofl_
+                for fo in xrange(SBOf.getNumFluxObjectives()):
+                    fluxobj = SBOf.getFluxObjective(fo)
+                    print (" * Coefficient", fo, "for reaction", fluxobj.getReaction(), "is equal to", fluxobj.getCoefficient())
+        
         
         for chem in model.getListOfSpecies():
             a=species(chem)
@@ -163,6 +176,13 @@ class SBML2BSW():
         #----Maniputlating the reactants of each reaction
         
         for react in model.getListOfReactions():
+            
+            if use_fba:
+                RFBCplg = react.getPlugin('fbc')
+                lfbid = RFBCplg.getLowerFluxBound()
+                ufbid = RFBCplg.getUpperFluxBound()
+                self.FLUX_BOUND.append( [PARAM_D[lfbid]['value'], PARAM_D[ufbid]['value']] )
+
             
             tmp_reactants =[0]*(len(self.Species_list))
             tmp_products = [0]*(len(self.Species_list))
@@ -207,11 +227,11 @@ class SBML2BSW():
                     elif rc.rev:
                         print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
-                        self.rev_par=self.model.getParameter(parameters_in_kineticaw[0]).getValue()
+                        #self.rev_par=1/(float(self.model.getParameter(parameters_in_kineticaw[0]).getValue()))
                     elif len(list(parameters_in_kineticaw))==2:
                         print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
-                        self.rev_par=self.model.getParameter(parameters_in_kineticaw[1]).getValue()
+                        #self.rev_par=self.model.getParameter(parameters_in_kineticaw[1]).getValue()
                     elif len(list(parameters_in_kineticaw))==1:
                         pass
                     else:
@@ -220,40 +240,41 @@ class SBML2BSW():
                     
                     for el in parameters_in_kineticaw:                   
                         p=parameter(self.model.getParameter(el))
-
                         if p.value==0:
                             if not p.par_const:
                                 print ("reaction",rc.name)
                                 print (p.value)
                                 print ("WARNING: non constant parameter, assignment rule?")
-                                for i in model.getListOfRules():
-                                    name=i.getId()
-                                    formula=i.getFormula()
-                                    print (formula)
-                                
-                                # if model.getListOfRules().get(p.getName()).isParameter():
-                                #     # print " * Rule for parameter", p.getName(), "detected"
-                                #     # print " * Rule implemented as", self.model.getListOfRules().get("k1").getFormula()
-                                #     tokenized_rule = model.getListOfRules().get().getFormula()
-                                #     if tokenized_rule[0:8] == 'stepfunc':
-                                #         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                #         tokenized_rule = tokenized_rule.replace(")", "")
-                                #     tokenized_rule = tokenized_rule.replace(",", "")
-                                #     tokenized_rule =  tokenized_rule.split()
-                                #     temp = 0
-                                #     for token in tokenized_rule:                                       
-                                #         try:
-                                #             temp = float(token)
-                                #             if temp>0:
-                                #                 break
-                                #         except: 
-                                #             pass
-                                #         #print token, "is NAN"
-
-                                #     self.PARAMS.append(temp)                
-                                #     #print p.getName(), float(token)
+                                # for i in model.getListOfRules():
+                                #     name=i.getId()
+                                #     formula=i.getFormula()
+                                #     print ("vvvv=======")
+                                #     print (formula)
+                                #     print (i)
+                                #     print ("^^^^=======")                                    
+                                    #if model.getListOfRules().get(p.getName()).isParameter():
+                                    #     print (" * Rule for parameter", p.name), "detected")
+                                    #     print (" * Rule implemented as", self.model.getListOfRules().get("k1").getFormula())
+                                    #     tokenized_rule = model.getListOfRules().get().getFormula()
+                                    #     if tokenized_rule[0:8] == 'stepfunc':
+                                    #         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                    #         tokenized_rule = tokenized_rule.replace(")", "")
+                                    #     tokenized_rule = tokenized_rule.replace(",", "")
+                                    #     tokenized_rule =  tokenized_rule.split()
+                                    #     temp = 0
+                                    #     for token in tokenized_rule:                                       
+                                    #         try:
+                                    #             temp = float(token)
+                                    #             if temp>0:
+                                    #                 break
+                                    #         except: 
+                                    #             pass
+                                    #         #print token, "is NAN"
+                                    
+                                    #     self.PARAMS.append(temp)                
+                                    #     #print p.getName(), float(token)
                             else:
-                                print ("WARNING: constant value set to 0, parameter:", p.name)
+                                print ("WARNING: constant value set to 0, parameter:", p.name())
                                 self.PARAMS.append(temp)           
                         else:
                             self.PARAMS.append(p.value)
@@ -262,12 +283,13 @@ class SBML2BSW():
                         self.PARAMS.append(p.value)
 
                 if create_reverse:
+                    self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
-                    self.REACT_NAME.append(rc.ID + " (reverse)")
                     # verify if reverse parameters are needed
-                    #self.PARAMS.append(float(self.rev_par))
-                    
+                    # print ("Reverse constant = ",self.rev_par)
+                    # self.PARAMS.append(self.rev_par)
+
 
     def save(self):
         os.chdir(self.out)
@@ -277,6 +299,7 @@ class SBML2BSW():
         numpy.savetxt("left_side", self.LEFT, fmt="%d", delimiter="\t")
         numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
         numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
+        numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
         os.chdir(SBML2BSW.wd)
 
 #==== END ====
@@ -287,46 +310,34 @@ class SBML2BSW():
 
 if __name__ == '__main__':
 
-    MODEL = None
+    REACT = None
 
     OUTPUT_FOLDER = "./output"
 
     if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
 
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
-    MODEL = sbml.getModel()
+    REACT = sbml.getModel()
 
-    SB=SBML2BSW(MODEL,OUTPUT_FOLDER)
+    SB=SBML2BSW(REACT,OUTPUT_FOLDER)
     SB.create_folder()
-    SB.react(MODEL)
+    SB.react(REACT)
     SB.save()
-    
-    separator()
 
+    #-- screen output --
+    separator()
     print("Reaction Names",SB.REACT_NAME)
-    
     separator()
-    
     print("PSA chemical species",SB.ALPHABET)
-
     separator()
-
     print("Chemicals Initial Amount",SB.IN_AMOUNT)
-
     separator()
-
     print("Feed Species",SB.M_FEED)
-
     separator()
-
     print("Reactants:",SB.LEFT)
-
     separator()
-
     print("Products:",SB.RIGHT)
-
     separator()
-
     print("Parameters Vector",SB.PARAMS)
-
     separator()
+    #-- END  --
