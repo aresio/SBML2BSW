@@ -246,34 +246,37 @@ class SBML2BSW():
                             if not p.par_const:
                                 print ("reaction",rc.name)
                                 print ("WARNING: non constant parameter, assignment rule?")
+
                                 #-- To Be Verified--------
-                                if model.getListOfRules().get(1).isParameter():
+                                print (model.getListOfRules().get(p.ID))
+                                if model.getListOfRules().get(p.ID):
+                                    print("HHHHHHHHHHHHHHHHHHHHHHHHHHH")
                                     print ("vvvv=======")
                                     print ("*Rule for parameter",p.name,"detected")
                                     print ("^^^^=======")
-                                    tokenized_rule = model.getListOfRules().get(1).getFormula()
-                                    if tokenized_rule[0:8] == 'stepfunc':
-                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                        tokenized_rule = tokenized_rule.replace(")", "")
+                                    tokenized_rule = model.getListOfRules().get(p.ID).getFormula()
+                                #     if tokenized_rule[0:8] == 'stepfunc':
+                                #         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                #         tokenized_rule = tokenized_rule.replace(")", "")
                                     print ("* tokenized_rule =" ,tokenized_rule)
                                     tokenized_rule = tokenized_rule.replace(",", "")
                                     tokenized_rule =  tokenized_rule.split()
                                     temp = 0
                                     for token in tokenized_rule:
                                         try:
-                                            temp = float(token)
-                                            if temp>0:
-                                                break
+                                             temp = float(token)
+                                             if temp>0:
+                                                 break
                                         except:
                                             pass
-                                    print ("token =",temp)
-                                    self.PARAMS.append(temp)
+                                        
+                                        print ("token =",temp)
+                                #     self.PARAMS.append(temp)
                                 #-- To Be Verified-------
                             else:
                                 print ("WARNING: constant value set to 0, parameter:", p.name)
                                 self.PARAMS.append(temp)
                         else:
-                            print (float(p.value))
                             self.PARAMS.append(p.value)
                 else:
                     for p in rc.kin_law.getListOfParameters():
@@ -323,18 +326,18 @@ if __name__ == '__main__':
 
     #-- screen output --
     separator()
-    print("Reaction Names",SB.REACT_NAME)
+#    print("Reaction Names",SB.REACT_NAME)
     separator()
-    print("PSA chemical species",SB.ALPHABET)
+#    print("PSA chemical species",SB.ALPHABET)
     separator()
-    print("Chemicals Initial Amount",SB.IN_AMOUNT)
+#    print("Chemicals Initial Amount",SB.IN_AMOUNT)
     separator()
-    print("Feed Species",SB.M_FEED)
+#    print("Feed Species",SB.M_FEED)
     separator()
-    print("Reactants:",SB.LEFT)
+#    print("Reactants:",SB.LEFT)
     separator()
-    print("Products:",SB.RIGHT)
+#    print("Products:",SB.RIGHT)
     separator()
-    print("Parameters Vector",SB.PARAMS)
+#    print("Parameters Vector",SB.PARAMS)
     separator()
     #-- END  --
