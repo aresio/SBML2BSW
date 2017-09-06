@@ -236,47 +236,44 @@ class SBML2BSW():
                         pass
                     else:
                         print ("ERROR: too many parameters in kinetic law, aborting")
+                        print (list(parameters_in_kineticaw))
                         exit(-3)
                     
                     for el in parameters_in_kineticaw:                   
                         p=parameter(self.model.getParameter(el))
+                        temp=0
                         if p.value==0:
                             if not p.par_const:
                                 print ("reaction",rc.name)
-                                print (p.value)
                                 print ("WARNING: non constant parameter, assignment rule?")
-                                # for i in model.getListOfRules():
-                                #     name=i.getId()
-                                #     formula=i.getFormula()
-                                #     print ("vvvv=======")
-                                #     print (formula)
-                                #     print (i)
-                                #     print ("^^^^=======")                                    
-                                    #if model.getListOfRules().get(p.getName()).isParameter():
-                                    #     print (" * Rule for parameter", p.name), "detected")
-                                    #     print (" * Rule implemented as", self.model.getListOfRules().get("k1").getFormula())
-                                    #     tokenized_rule = model.getListOfRules().get().getFormula()
-                                    #     if tokenized_rule[0:8] == 'stepfunc':
-                                    #         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                    #         tokenized_rule = tokenized_rule.replace(")", "")
-                                    #     tokenized_rule = tokenized_rule.replace(",", "")
-                                    #     tokenized_rule =  tokenized_rule.split()
-                                    #     temp = 0
-                                    #     for token in tokenized_rule:                                       
-                                    #         try:
-                                    #             temp = float(token)
-                                    #             if temp>0:
-                                    #                 break
-                                    #         except: 
-                                    #             pass
-                                    #         #print token, "is NAN"
-                                    
-                                    #     self.PARAMS.append(temp)                
-                                    #     #print p.getName(), float(token)
+                                #-- To Be Verified--------
+                                if model.getListOfRules().get(1).isParameter():
+                                    print ("vvvv=======")
+                                    print ("*Rule for parameter",p.name,"detected")
+                                    print ("^^^^=======")
+                                    tokenized_rule = model.getListOfRules().get(1).getFormula()
+                                    if tokenized_rule[0:8] == 'stepfunc':
+                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                        tokenized_rule = tokenized_rule.replace(")", "")
+                                    print ("* tokenized_rule =" ,tokenized_rule)
+                                    tokenized_rule = tokenized_rule.replace(",", "")
+                                    tokenized_rule =  tokenized_rule.split()
+                                    temp = 0
+                                    for token in tokenized_rule:
+                                        try:
+                                            temp = float(token)
+                                            if temp>0:
+                                                break
+                                        except:
+                                            pass
+                                    print ("token =",temp)
+                                    self.PARAMS.append(temp)
+                                #-- To Be Verified-------
                             else:
-                                print ("WARNING: constant value set to 0, parameter:", p.name())
-                                self.PARAMS.append(temp)           
+                                print ("WARNING: constant value set to 0, parameter:", p.name)
+                                self.PARAMS.append(temp)
                         else:
+                            print (float(p.value))
                             self.PARAMS.append(p.value)
                 else:
                     for p in rc.kin_law.getListOfParameters():
