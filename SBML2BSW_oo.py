@@ -114,8 +114,6 @@ class SBML2BSW():
         self.ALPHABET = []
         self.Species_list = []
         self.Species_ID = []
-        #to use SpeciesReference Objects
-        self.Dictionary = {}
         self.IN_AMOUNT = []
         self.M_FEED = []
         self.LEFT = []
@@ -124,16 +122,29 @@ class SBML2BSW():
         self.REACT_NAME = []
         self.BOUNDIARIES = []
         self.FLUX_BOUND = []
+        #usefull dictionaries
+        self.id2name = {}
+        self.Dictionary = {}
 
+        NAME=[]
         for chem in model.getListOfSpecies():
             a=species(chem)
             self.Species_list.append(a)
             self.Species_ID.append(a.ID)
             #--prepare alphabet
+
+            #Pay attention: name is just the label i use to recognise
+            #different species.
+            name=""
             if a.name != "":
-                Alph_element = a.name+"_in_"+a.compartment
+                name=a.name
             else:
-                Alph_element = a.ID+"_in_"+a.compartment
+                name=a.ID
+
+            if a.compartment != "":
+                Alph_element = name+"_in_"+a.compartment
+
+            NAME.append(name)
 
             #To avoid double entries
             if Alph_element in self.ALPHABET:
@@ -141,64 +152,76 @@ class SBML2BSW():
             else:
                 self.ALPHABET.append(Alph_element)
 
-            print(len(self.ALPHABET))
-            self.Dictionary[a.ID]=Alph_element
+            #dictionary of univocal id and elements in compartments
+            #(wich can be double)
+            self.id2name[a.ID]=Alph_element
 
             #-- prepare initial amount
-            
+
             amount=0
-
-            
-            print("*species :", a.ID,"; compartment :", a.compartment)
-
-             
             if isnan(a.amount):
                 amount=float(a.conc)
             else:
                 amount=float(a.amount)
-                
-            self.IN_AMOUNT.append(amount)
+
+            alias = self.id2name[a.ID]
+            index = self.ALPHABET.index(alias)
             
-                
+            try:
+                self.IN_AMOUNT[index] = amount
+            except:
+                self.IN_AMOUNT.append(amount)
+            
+            
             #--prepare M_feed
-            
+            print("* index =",index)
             if a.spec_con:
-                self.M_FEED.append(a.spec_con)
+                try:
+                    self.M_FEED[index]=a.spec_con
+                except:
+                    self.M_FEED.append(a.spec_con)
             else:
-                self.M_FEED.append(int(0))
+                try:
+                    self.M_FEED[index]=0
+                except:
+                    self.M_FEED.append(0)
+
+            
+        #----Invert id2name dictionary
+        self.Dictionary = {v: k for k, v in self.id2name.items()}
 
         #----Maniputlating the reactants of each reaction
         
         for react in model.getListOfReactions():                       
-            tmp_reactants =[0]*(len(self.Species_list))
-            tmp_products = [0]*(len(self.Species_list))
+            tmp_reactants =[0]*(len(self.ALPHABET))
+            tmp_products = [0]*(len(self.ALPHABET))
             create_reverse = False
             
             rc = reaction(react)
             self.REACT_NAME.append(rc.ID)
 
             for reactant in rc.react_list:
-                # sto = reactant.getStoichiometry()
-                # alias = self.Dictionary[reactant.getSpecies()]
-                # index = self.ALPHABET.index(alias)
-                # tmp_reactants[index] = int(sto)
-                
-                react_species = reactant.getSpecies()
-                index = self.Species_ID.index(react_species)
-                if react_species in self.Species_ID:
-                    spe  = self.Species_list[index]
-                    sto = reactant.getStoichiometry()
-                    tmp_reactants[index] = int(sto)
+                sto=reactant.getStoichiometry()
+                alias = self.id2name[reactant.getSpecies()]
+                index = self.ALPHABET.index(alias)
+                print("* index =",index)
+                tmp_reactants[index]=int(sto)
+                # react_species = reactant.getSpecies()
+                # index = self.Species_ID.index(react_species)
+                # if react_species in self.Species_ID:
+                #     spe  = self.Species_list[index]
+                #     sto = reactant.getStoichiometry()
+                #     tmp_reactants[index] = int(sto)
             self.LEFT.append(tmp_reactants)
 
             #----Maniputlating the reactants of each reactio
             for prods in rc.prod_list:
-                prod_species = prods.getSpecies()
-                index = self.Species_ID.index(prod_species)
-                if prod_species in self.Species_ID:
-                    spe = self.Species_list[index]
-                    sto = prods.getStoichiometry()
-                    tmp_products[index] = int(sto)
+                sto=prods.getStoichiometry()
+                alias = self.id2name[prods.getSpecies()]
+                print(len(alias))
+                index = self.ALPHABET.index(alias)
+                print("* index =",index)
+                tmp_products[index]=int(sto)
             self.RIGHT.append(tmp_products)
 
             #---- Create the constant vector
@@ -209,28 +232,27 @@ class SBML2BSW():
                     parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticaw))
-                    print(parameters_in_kineticaw)
                     if len(parameters_in_kineticaw)==0:
                         #print ("parameters_in_kineticaw==0")
                         #print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
                     elif rc.rev:
-#                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
+                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
                     elif len(list(parameters_in_kineticaw))==2:
-#                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
+                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
                     elif len(list(parameters_in_kineticaw))==1:
                         pass
                     else:
-#                        print ("ERROR: too many parameters in kinetic law, aborting")
+                        print ("ERROR: too many parameters in kinetic law, aborting")
                         print (list(parameters_in_kineticaw))
                         exit(-3)
                     
                     for el in parameters_in_kineticaw:
                         p=parameter(self.model.getParameter(el))
                         if p.value==0:
-                            print("* p.par_const =",p.par_const)
+#                            print("* p.par_const =",p.par_const)
                             temp = 0
                             if not p.par_const:
                                 print ("reaction",rc.name)
@@ -240,7 +262,7 @@ class SBML2BSW():
                                     if tokenized_rule[0:8] == 'stepfunc':
                                         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
                                         tokenized_rule = tokenized_rule.replace(")", "")
-                                    print ("* tokenized_rule =" ,tokenized_rule)
+#                                    print ("* tokenized_rule =" ,tokenized_rule)
                                     tokenized_rule = tokenized_rule.replace(",", "")
                                     tokenized_rule =  tokenized_rule.split()
                                     for token in tokenized_rule:
@@ -267,9 +289,6 @@ class SBML2BSW():
                     self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
-                    # verify if reverse parameters are needed
-                    # print ("Reverse constant = ",self.rev_par)
-                    #self.PARAMS.append(self.rev_par)
 
 
     def save(self):
@@ -281,11 +300,10 @@ class SBML2BSW():
                 fo.write(i+"\t")
         numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", newline="\t",delimiter="\t")
         numpy.savetxt("M_feed",self.M_FEED,fmt="%d",newline="\t" ,delimiter="\t")
-        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d", delimiter="\t")
+        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d",delimiter="\t")
         numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
         numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
         numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
-        os.chdir(SBML2BSW.wd)
 
 
 #==== END ====
