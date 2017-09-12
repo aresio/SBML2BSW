@@ -147,12 +147,18 @@ class SBML2BSW():
             #-- prepare initial amount
             
             amount=0
+
+            
+            print("*species :", a.ID,"; compartment :", a.compartment)
+
+             
             if isnan(a.amount):
                 amount=float(a.conc)
             else:
                 amount=float(a.amount)
-
+                
             self.IN_AMOUNT.append(amount)
+            
                 
             #--prepare M_feed
             
@@ -164,9 +170,7 @@ class SBML2BSW():
         #----Maniputlating the reactants of each reaction
         
         for react in model.getListOfReactions():                       
-#            tmp_reactants =[0]*(len(self.Species_list))
-            tmp_reactants = []
-            dimension=int(500)
+            tmp_reactants =[0]*(len(self.Species_list))
             tmp_products = [0]*(len(self.Species_list))
             create_reverse = False
             
@@ -174,18 +178,17 @@ class SBML2BSW():
             self.REACT_NAME.append(rc.ID)
 
             for reactant in rc.react_list:
-                sto = reactant.getStoichiometry()
-                alias = self.Dictionary[reactant.getSpecies()]
-                index = self.ALPHABET.index(alias)
-                tmp_reactants[index] = int(sto)
+                # sto = reactant.getStoichiometry()
+                # alias = self.Dictionary[reactant.getSpecies()]
+                # index = self.ALPHABET.index(alias)
+                # tmp_reactants[index] = int(sto)
                 
-                # react_species = reactor.getSpecies()
-                # index = self.Species_ID.index(react_species)
-                # print(index)
-                # if react_species in self.Species_ID:
-                #     spe  = self.Species_list[index]
-                #     sto = reactor.getStoichiometry()
-                #     tmp_reactants[index] = int(sto)
+                react_species = reactant.getSpecies()
+                index = self.Species_ID.index(react_species)
+                if react_species in self.Species_ID:
+                    spe  = self.Species_list[index]
+                    sto = reactant.getStoichiometry()
+                    tmp_reactants[index] = int(sto)
             self.LEFT.append(tmp_reactants)
 
             #----Maniputlating the reactants of each reactio
@@ -212,15 +215,15 @@ class SBML2BSW():
                         #print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
                     elif rc.rev:
-                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
+#                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
                     elif len(list(parameters_in_kineticaw))==2:
-                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
+#                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
                     elif len(list(parameters_in_kineticaw))==1:
                         pass
                     else:
-                        print ("ERROR: too many parameters in kinetic law, aborting")
+#                        print ("ERROR: too many parameters in kinetic law, aborting")
                         print (list(parameters_in_kineticaw))
                         exit(-3)
                     
@@ -276,16 +279,13 @@ class SBML2BSW():
         with open("alphabet", "w") as fo:
             for i in self.ALPHABET:
                 fo.write(i+"\t")
-        numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", delimiter="\t")
-        numpy.savetxt("M_feed",self.M_FEED,fmt="%d", delimiter="\t")
+        numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", newline="\t",delimiter="\t")
+        numpy.savetxt("M_feed",self.M_FEED,fmt="%d",newline="\t" ,delimiter="\t")
         numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d", delimiter="\t")
         numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
         numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
         numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
         os.chdir(SBML2BSW.wd)
-
-#==== END ====
-
 
 
 #==== END ====

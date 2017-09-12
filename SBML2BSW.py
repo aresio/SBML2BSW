@@ -8,6 +8,16 @@ import re
 from numpy import savetxt
 from math import isnan
 
+sbmlns = SBMLNamespaces(3,1,"fbc",1);
+
+class ObjectiveFunction:
+        def __init__(self):
+            self.type=None
+            self.name=None
+            self.ID=None
+            self.fluxes=[]
+
+
 """
 SBML to BioSimWare conversion.
 TODO:   - assignment rules
@@ -16,30 +26,6 @@ TODO:   - assignment rules
         - feeds loaded from SBML
         - FBA
 """
-
-
-sbmlns = SBMLNamespaces(3,1,"fbc",1);
-
-class ObjectiveFunction:
-    """
-    Creates a ObjectFunction object in get_reactions(self, use_fba=True) to make FBA stuff
-    """
-    def __init__(self):
-        self.type=None
-        self.name=None
-        self.ID=None
-        self.fluxes=[]
-
-
-def separator():
-    """
-    Prints a separator fo the output
-    """
-    print
-    print "*"*100
-    print
-
-
 class SBMLloader(object):
 
     def __init__(self, file_name):
@@ -58,98 +44,13 @@ class SBMLloader(object):
         else:
             print " * Please specify a SBML file"
 
-
-    def convert_to_biosimware(self, OUTPATH, verbose=False):
-
-        """        
-        This method creates an output folder calling
-        self.create_folder(self,OUTPATH), processes the SBML with
-        self.process_sbml(self) and save the results in file in OUTPATH
-        
-        """     
-        
-        self.create_folder(OUTPATH)
-        self.process_sbml()
-
-        tots_species = len(self.initial_amounts)
-        feeds = numpy.zeros(tots_species)
-
-        cwd = os.getcwd()
-        os.chdir(OUTPATH)
-
-        if verbose: print " * Creating 'M_0' with initial state...",
-        savetxt("M_0", [self.initial_amounts], fmt="%e", delimiter="\t")
-        if verbose: print "DONE"
-        
-        if verbose: print " * Creating 'M_feed' file...",        
-        for n,species in enumerate(self.model.getListOfSpecies()):
-            if species.constant: feeds[n]=1
-        numpy.savetxt("M_feed", [feeds], fmt="%d", delimiter="\t")
-        if verbose: print "DONE"
-
-        if verbose: print " * Creating 'alphabet' with names of species...", 
-        with open("alphabet", "w") as fo:
-            for (k,v) in self.sorted_species_dict: fo.write(k+"\t")
-        if verbose: print "DONE"
-        
-        if verbose: print " * Creating 'left_side' matrix with reactants",
-        numpy.savetxt("left_side", self.LEFT, fmt="%d", delimiter="\t")
-        if verbose: print "DONE"; print " * Creating 'right_side' matrix with products...",
-        numpy.savetxt("right_side", self.RIGHT, fmt="%d", delimiter="\t")
-        if verbose: print "DONE"; print " * Creating 'c_vector' file for parameters...",
-        numpy.savetxt("c_vector", numpy.array([self.PARAMS]), fmt="%e", delimiter="\n")
-        if verbose: print " * Creating 'boundaries' matrix for FBA fluxes limits...", 
-        numpy.savetxt("boundaries", self.fluxes_boundaries, fmt="%e", delimiter="\t")
-        if verbose: print "DONE"
-
-        os.chdir(cwd)
-
     def create_folder(self, OUTPATH):
-        """
-        Creates the specified output folder
-        """
         try: os.mkdir(OUTPATH)
         except: print "WARNING: directory", OUTPATH, "already exists"
 
-        
-    def process_sbml(self):
-        """
-        Creates the model object,creates a dictionary of species ID , gets
-        the initial amount of each species in a dictionary
-        (self_get_initial_amounts()), creates the lists that will be
-        used to store the stoichiometry and invokes
-        self.get_reactions() wich produces the output matrices
-
-        """
-        # create dictionary of species IDs
-        self.id2name = {}
-        for species in self.model.getListOfSpecies():            
-            fullname = species.getName()
-            if fullname == "":
-                fullname = species.getId()
-            if species.getCompartment()!="":
-                fullname = fullname + "_in_"+species.getCompartment()
-            #print fullname
-            self.id2name[species.getId()] = fullname
-
-        # create reverse dictionary of species indices
-        self.species_dict = {}        
-        
-        # container of initial species amounts (sorted)
-        self.initial_amounts = self.get_initial_amounts()
-        tots_species = len(self.initial_amounts)
-        
-        self.sorted_species_dict = sorted(self.species_dict.items(),  key=operator.itemgetter(1))
-       
-        self.LEFT, self.RIGHT, self.PARAMS = [], [], []
-        self.get_reactions()    
-
 
     def get_initial_amounts(self, verbose=True):        
-        """Detects species in each comparment, gets the amount and the units
-        of each specie, fills the species dictionary.
-
-        """
+        
         ini = []
 
         print " * Detected", len(self.model.getListOfSpecies()), "species"
@@ -205,13 +106,7 @@ class SBMLloader(object):
 
 
     def get_reactions(self, use_fba=False):
-        """Creates a Dictionary of all parameters, extract the reaction
-        constats, extract the reaction names and puts them in a list
-        (reaction_names), extractants and products. The stoichometric
-        indexes of reactants and products are extracted and used to
-        create the LEFT and RIGHT matrixes for reactants and products.
 
-        """
         tots_species = len(self.initial_amounts)
         self.reaction_names = []
         self.fluxes_boundaries = []
@@ -289,7 +184,7 @@ class SBMLloader(object):
                     parameters_in_kineticaw = re.findall(r"[\w']+", react.getKineticLaw().getFormula())
                     parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
                     parameters_in_kineticaw = filter( lambda x: x in nomi_parametri, parameters_in_kineticaw )
-                     #print react.getName(), "PIKL:", parameters_in_kineticaw
+                    # print react.getName(), "PIKL:", parameters_in_kineticaw
                     if len(parameters_in_kineticaw)==0:
                         print "ERROR: can't find any kinetic parameters for reaction", reaction_name
                         exit(-3)
@@ -385,6 +280,78 @@ class SBMLloader(object):
 
             #exit()
 
+
+
+
+    def convert_to_biosimware(self, OUTPATH, verbose=False):
+
+        self.create_folder(OUTPATH)
+        self.process_sbml()
+
+        tots_species = len(self.initial_amounts)
+        feeds = numpy.zeros(tots_species)
+
+        cwd = os.getcwd()
+        os.chdir(OUTPATH)
+
+        if verbose: print " * Creating 'M_0' with initial state...",
+        savetxt("M_0", [self.initial_amounts], fmt="%e", delimiter="\t")
+        if verbose: print "DONE"
+        
+        if verbose: print " * Creating 'M_feed' file...",        
+        for n,species in enumerate(self.model.getListOfSpecies()):
+            if species.constant: feeds[n]=1
+        numpy.savetxt("M_feed", [feeds], fmt="%d", delimiter="\t")
+        if verbose: print "DONE"
+
+        if verbose: print " * Creating 'alphabet' with names of species...", 
+        with open("alphabet", "w") as fo:
+            for (k,v) in self.sorted_species_dict: fo.write(k+"\t")
+        if verbose: print "DONE"
+        
+        if verbose: print " * Creating 'left_side' matrix with reactants",
+        numpy.savetxt("left_side", self.LEFT, fmt="%d", delimiter="\t")
+        if verbose: print "DONE"; print " * Creating 'right_side' matrix with products...",
+        numpy.savetxt("right_side", self.RIGHT, fmt="%d", delimiter="\t")
+        if verbose: print "DONE"; print " * Creating 'c_vector' file for parameters...",
+        numpy.savetxt("c_vector", numpy.array([self.PARAMS]), fmt="%e", delimiter="\n")
+        if verbose: print " * Creating 'boundaries' matrix for FBA fluxes limits...", 
+        numpy.savetxt("boundaries", self.fluxes_boundaries, fmt="%e", delimiter="\t")
+        if verbose: print "DONE"
+
+        os.chdir(cwd)
+        
+
+    def process_sbml(self):
+
+        # create dictionary of species IDs
+        self.id2name = {}
+        for species in self.model.getListOfSpecies():            
+            fullname = species.getName()
+            if fullname == "":
+                fullname = species.getId()
+            if species.getCompartment()!="":
+                fullname = fullname + "_in_"+species.getCompartment()
+            #print fullname
+            self.id2name[species.getId()] = fullname
+
+        # create reverse dictionary of species indices
+        self.species_dict = {}        
+        
+        # container of initial species amounts (sorted)
+        self.initial_amounts = self.get_initial_amounts()
+        tots_species = len(self.initial_amounts)
+        
+        self.sorted_species_dict = sorted(self.species_dict.items(),  key=operator.itemgetter(1))
+       
+        self.LEFT, self.RIGHT, self.PARAMS = [], [], []
+        self.get_reactions()    
+
+
+def separator():
+    print
+    print "*"*100
+    print
 
 if __name__ == '__main__':
 
