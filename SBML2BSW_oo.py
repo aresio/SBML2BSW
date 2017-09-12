@@ -94,6 +94,10 @@ def separator():
 #==== PRINCIPAL CLASS ====
 
 class SBML2BSW():
+    """
+    This Class uses all the previous ones to calculate and write the
+    BSW files
+    """
     def __init__(self,model,OUTPATH):
         self.model=model
         self.out=OUTPATH
@@ -122,6 +126,7 @@ class SBML2BSW():
         self.REACT_NAME = []
         self.BOUNDIARIES = []
         self.FLUX_BOUND = []
+
         #usefull dictionaries
         self.id2name = {}
         self.Dictionary = {}
@@ -174,7 +179,6 @@ class SBML2BSW():
             
             
             #--prepare M_feed
-            print("* index =",index)
             if a.spec_con:
                 try:
                     self.M_FEED[index]=a.spec_con
@@ -204,23 +208,14 @@ class SBML2BSW():
                 sto=reactant.getStoichiometry()
                 alias = self.id2name[reactant.getSpecies()]
                 index = self.ALPHABET.index(alias)
-                print("* index =",index)
                 tmp_reactants[index]=int(sto)
-                # react_species = reactant.getSpecies()
-                # index = self.Species_ID.index(react_species)
-                # if react_species in self.Species_ID:
-                #     spe  = self.Species_list[index]
-                #     sto = reactant.getStoichiometry()
-                #     tmp_reactants[index] = int(sto)
             self.LEFT.append(tmp_reactants)
 
             #----Maniputlating the reactants of each reactio
             for prods in rc.prod_list:
                 sto=prods.getStoichiometry()
                 alias = self.id2name[prods.getSpecies()]
-                print(len(alias))
                 index = self.ALPHABET.index(alias)
-                print("* index =",index)
                 tmp_products[index]=int(sto)
             self.RIGHT.append(tmp_products)
 
@@ -228,31 +223,30 @@ class SBML2BSW():
             if rc.kin_law != None:
                 if len(rc.kin_law.getListOfParameters())==0:
                     nomi_parametri = [par.getId() for par in self.model.getListOfParameters()]
-                    parameters_in_kineticaw = re.findall(r"[\w']+", rc.kin_law.getFormula())
-                    parameters_in_kineticaw = [x.strip() for x in parameters_in_kineticaw ]
+                    parameters_in_kineticlaw = re.findall(r"[\w']+", rc.kin_law.getFormula())
+                    parameters_in_kineticlaw = [x.strip() for x in parameters_in_kineticlaw ]
                     #filter object in python3 don't have len attribute, converting to string
-                    parameters_in_kineticaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticaw))
-                    if len(parameters_in_kineticaw)==0:
-                        #print ("parameters_in_kineticaw==0")
-                        #print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
+                    parameters_in_kineticlaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticlaw))
+                    if len(parameters_in_kineticlaw)==0:
+                        print ("parameters_in_kineticlaw==0")
+                        print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
                     elif rc.rev:
                         print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
-                    elif len(list(parameters_in_kineticaw))==2:
+                    elif len(list(parameters_in_kineticlaw))==2:
                         print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
-                    elif len(list(parameters_in_kineticaw))==1:
+                    elif len(list(parameters_in_kineticlaw))==1:
                         pass
                     else:
                         print ("ERROR: too many parameters in kinetic law, aborting")
-                        print (list(parameters_in_kineticaw))
+                        print (list(parameters_in_kineticlaw))
                         exit(-3)
                     
-                    for el in parameters_in_kineticaw:
+                    for el in parameters_in_kineticlaw:
                         p=parameter(self.model.getParameter(el))
                         if p.value==0:
-#                            print("* p.par_const =",p.par_const)
                             temp = 0
                             if not p.par_const:
                                 print ("reaction",rc.name)
@@ -262,7 +256,6 @@ class SBML2BSW():
                                     if tokenized_rule[0:8] == 'stepfunc':
                                         tokenized_rule = tokenized_rule.replace("stepfunc(", "")
                                         tokenized_rule = tokenized_rule.replace(")", "")
-#                                    print ("* tokenized_rule =" ,tokenized_rule)
                                     tokenized_rule = tokenized_rule.replace(",", "")
                                     tokenized_rule =  tokenized_rule.split()
                                     for token in tokenized_rule:
@@ -293,8 +286,6 @@ class SBML2BSW():
 
     def save(self):
         os.chdir(self.out)
-        
-        #numpy.savetxt("alphabet", set(self.ALPHABET),fmt="%s", delimiter="\t",newline='\t')
         with open("alphabet", "w") as fo:
             for i in self.ALPHABET:
                 fo.write(i+"\t")
@@ -325,22 +316,17 @@ if __name__ == '__main__':
     SB.save()
 
     #-- screen output --
-    verbose=False
+    verbose=True
     if verbose:
         separator()
         print("Reaction Names",SB.REACT_NAME)
         separator()
-        print("PSA chemical species",SB.ALPHABET)
+        print("PSA chemical species",SB.Dictionary)
         separator()
         print("Chemicals Initial Amount",SB.IN_AMOUNT)
         separator()
         print("Feed Species",SB.M_FEED)
         separator()
-        print("Reactants:",SB.LEFT)
-        separator()
-        print("Products:",SB.RIGHT)
-        separator()
         print("Parameters Vector",SB.PARAMS)
-
         separator()
     #-- END  --
