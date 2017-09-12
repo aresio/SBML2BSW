@@ -112,7 +112,7 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
         
-    def react(self,model,use_fba=False):
+    def react(self,model,verbose=True):
 
         #list needed
         self.ALPHABET = []
@@ -131,7 +131,7 @@ class SBML2BSW():
         self.id2name = {}
         self.Dictionary = {}
 
-        NAME=[]
+        
         for chem in model.getListOfSpecies():
             a=species(chem)
             self.Species_list.append(a)
@@ -149,7 +149,9 @@ class SBML2BSW():
             if a.compartment != "":
                 Alph_element = name+"_in_"+a.compartment
 
-            NAME.append(name)
+            if verbose:
+                print ("* parsing species", Alph_element)
+            
 
             #To avoid double entries
             if Alph_element in self.ALPHABET:
@@ -284,18 +286,45 @@ class SBML2BSW():
                     self.RIGHT.append(tmp_reactants)
 
 
-    def save(self):
+    def save(self,verbose=True):
         os.chdir(self.out)
+        
+        if verbose:
+            print(" * Creating 'aphabet' with names of species")
         with open("alphabet", "w") as fo:
             for i in self.ALPHABET:
                 fo.write(i+"\t")
+        if verbose: print("DONE")
+        
+        if verbose:
+            print(" * Creating 'M_0' with initial state")
         numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", newline="\t",delimiter="\t")
-        numpy.savetxt("M_feed",self.M_FEED,fmt="%d",newline="\t" ,delimiter="\t")
-        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d",delimiter="\t")
-        numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
-        numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
-        numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
+        if verbose:print("DONE")
 
+        if verbose:
+            print(" * Creating 'M_feed' file")
+        numpy.savetxt("M_feed",self.M_FEED,fmt="%d",newline="\t" ,delimiter="\t")
+        if verbose: print("DONE")
+        
+        if verbose:
+            print (" * Creating 'left_side' matrix with reactants")
+        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d",delimiter="\t")
+        if verbose: print("DONE")
+        
+        if verbose:
+            print (" * Creating 'right_side' matrix with reactants")
+        numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
+        if verbose: print("DONE")
+
+        if verbose:
+            print (" * Creating 'c_vector' vector with constants")
+        numpy.savetxt("c_vector", numpy.array(self.PARAMS),fmt="%e", delimiter="\t")
+        if verbose: print("DONE")
+        
+        if verbose:
+            print (" * Creating 'boundaries' matrix for FBA fluxes limits")
+        numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
+        if verbose: print("DONE")
 
 #==== END ====
 
@@ -316,17 +345,15 @@ if __name__ == '__main__':
     SB.save()
 
     #-- screen output --
-    verbose=True
-    if verbose:
-        separator()
-        print("Reaction Names",SB.REACT_NAME)
-        separator()
-        print("PSA chemical species",SB.Dictionary)
-        separator()
-        print("Chemicals Initial Amount",SB.IN_AMOUNT)
-        separator()
-        print("Feed Species",SB.M_FEED)
-        separator()
-        print("Parameters Vector",SB.PARAMS)
-        separator()
+    separator()
+    print("Reaction Names",SB.REACT_NAME)
+    separator()
+    print("PSA chemical species",SB.Dictionary)
+    separator()
+    print("Chemicals Initial Amount",SB.IN_AMOUNT)
+    separator()
+    print("Feed Species",SB.M_FEED)
+    separator()
+    print("Parameters Vector",SB.PARAMS)
+    separator()
     #-- END  --
