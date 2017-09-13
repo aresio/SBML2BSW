@@ -4,3 +4,4 @@ test_conv/
 output*
 SBML2BSW_oo_dev.py
 SBML2BSW_back.py
+test_inputs.sh

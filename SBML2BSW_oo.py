@@ -285,7 +285,7 @@ class SBML2BSW():
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
 
-
+        print(self.LEFT)
     def save(self,verbose=True):
         os.chdir(self.out)
         
@@ -298,22 +298,22 @@ class SBML2BSW():
         
         if verbose:
             print(" * Creating 'M_0' with initial state")
-        numpy.savetxt("M_0",self.IN_AMOUNT,fmt="%e", newline="\t",delimiter="\t")
+        numpy.savetxt("M_0",[self.IN_AMOUNT],fmt="%e",delimiter="\t")
         if verbose:print("DONE")
 
         if verbose:
-            print(" * Creating 'M_feed' file")
-        numpy.savetxt("M_feed",self.M_FEED,fmt="%d",newline="\t" ,delimiter="\t")
+            print(" * Creating 'M_feed' file")       
+        numpy.savetxt("M_feed",[self.M_FEED],fmt="%d",delimiter="\t")
         if verbose: print("DONE")
         
         if verbose:
             print (" * Creating 'left_side' matrix with reactants")
-        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d",delimiter="\t")
+        numpy.savetxt("left_side", numpy.array(self.LEFT), fmt="%d",newline="\n",delimiter="\t")
         if verbose: print("DONE")
         
         if verbose:
             print (" * Creating 'right_side' matrix with reactants")
-        numpy.savetxt("right_side", numpy.array(self.RIGHT), fmt="%d", delimiter="\t")
+        numpy.savetxt("right_side", self.RIGHT, fmt="%d",newline="\n", delimiter="\t")
         if verbose: print("DONE")
 
         if verbose:
@@ -332,10 +332,21 @@ if __name__ == '__main__':
 
     REACT = None
 
-    OUTPUT_FOLDER = "./output"
-
-    if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
-
+    if len(sys.argv)>1:
+        INPUT_FILE = sys.argv[1]
+        try:
+            OUTPUT_FOLDER = "./"+sys.argv[2]
+        except:
+            OUTPUT_FOLDER = "./output"
+    else:
+        error_string = """
+        No input file specified 
+        Positional Argument 1: path to input file
+        Positional Argument 2: output folder (optional, default './output')
+        """
+        print(error_string)
+        exit(1)
+    
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     REACT = sbml.getModel()
 
