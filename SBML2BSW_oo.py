@@ -335,7 +335,7 @@ if __name__ == '__main__':
     if len(sys.argv)>1:
         INPUT_FILE = sys.argv[1]
         try:
-            OUTPUT_FOLDER = "./"+sys.argv[2]
+            OUTPUT_FOLDER = sys.argv[2]
         except:
             OUTPUT_FOLDER = "./output"
     else:
