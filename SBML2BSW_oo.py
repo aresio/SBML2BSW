@@ -112,7 +112,7 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
         
-    def react(self,model,verbose=True):
+    def react(self,model,verbose=False):
 
         #list needed
         self.ALPHABET = []
@@ -198,14 +198,14 @@ class SBML2BSW():
 
         #----Maniputlating the reactants of each reaction
         
-        for react in model.getListOfReactions():                       
+        for react in model.getListOfReactions():           
             tmp_reactants =[0]*(len(self.ALPHABET))
             tmp_products = [0]*(len(self.ALPHABET))
             create_reverse = False
             
             rc = reaction(react)
             self.REACT_NAME.append(rc.ID)
-
+            
             for reactant in rc.react_list:
                 sto=reactant.getStoichiometry()
                 alias = self.id2name[reactant.getSpecies()]
@@ -230,19 +230,21 @@ class SBML2BSW():
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticlaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticlaw))
                     if len(parameters_in_kineticlaw)==0:
-                        print ("parameters_in_kineticlaw==0")
-                        print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
+                        #print ("parameters_in_kineticlaw==0")
+                        #print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
                     elif rc.rev:
-                        print ("WARNING: detected reversible reaction by getReversible", rc.ID)
+                        #print ("WARNING: detected reversible reaction by getReversible", rc.ID)
                         create_reverse = True
+                        
                     elif len(list(parameters_in_kineticlaw))==2:
-                        print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
+                        #print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                         create_reverse = True
+                        
                     elif len(list(parameters_in_kineticlaw))==1:
                         pass
                     else:
-                        print ("ERROR: too many parameters in kinetic law, aborting")
+                        #print ("ERROR: too many parameters in kinetic law, aborting")
                         print (list(parameters_in_kineticlaw))
                         exit(-3)
                     
@@ -251,8 +253,8 @@ class SBML2BSW():
                         if p.value==0:
                             temp = 0
                             if not p.par_const:
-                                print ("reaction",rc.name)
-                                print ("WARNING: non constant parameter, assignment rule?")
+                                #print ("reaction",rc.name)
+                                #print ("WARNING: non constant parameter, assignment rule?")
                                 if self.model.getListOfRules().get(p.name).isParameter:
                                     tokenized_rule = model.getListOfRules().get(p.name).getFormula()
                                     if tokenized_rule[0:8] == 'stepfunc':
@@ -270,23 +272,34 @@ class SBML2BSW():
                                         
                                     print ("token =",temp)
                                     self.PARAMS.append(temp)
+#                                    print(">>>>",p.ID,temp)
                             else:
-                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+                                #print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
                                 self.PARAMS.append(temp)
+#                                print(">>>",p.ID,temp)
                         else:
                             self.PARAMS.append(p.value)
+#                            print(">>",p.ID,p.value)
                 else:
                     for p in rc.kin_law.getListOfParameters():
                         self.PARAMS.append(p.value)
-
-                            
+                        print(">AA",p.name,p.value,rc.ID)
+                    if rc.rev:
+                        if len(rc.kin_law.getListOfParameters()) == 2:
+                            create_reverse=True
+                        else:
+                            print("WARNING: Reverse Flag = ", rc.rev,"But only 1 constant found!")
+                            print("Not considering reverse reaction for ",rc.ID)
+                    if len(rc.kin_law.getListOfParameters()) == 2:
+                        create_reverse=True
+                    
+                        
                 if create_reverse:
                     self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
 
-        print(self.LEFT)
-    def save(self,verbose=True):
+    def save(self,verbose=False):
         os.chdir(self.out)
         
         if verbose:
@@ -355,16 +368,17 @@ if __name__ == '__main__':
     SB.react(REACT)
     SB.save()
 
-    #-- screen output --
-    separator()
-    print("Reaction Names",SB.REACT_NAME)
-    separator()
-    print("PSA chemical species",SB.Dictionary)
-    separator()
-    print("Chemicals Initial Amount",SB.IN_AMOUNT)
-    separator()
-    print("Feed Species",SB.M_FEED)
-    separator()
-    print("Parameters Vector",SB.PARAMS)
-    separator()
-    #-- END  --
+    # #-- screen output --
+    # separator()
+    #    print("Reaction Names",SB.REACT_NAME)
+
+    # separator()
+    # print("PSA chemical species",SB.Dictionary)
+    # separator()
+    # print("Chemicals Initial Amount",SB.IN_AMOUNT)
+    # separator()
+    # print("Feed Species",SB.M_FEED)
+    # separator()
+    # print("Parameters Vector",SB.PARAMS)
+    # separator()
+    # #-- END  --
