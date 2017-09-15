@@ -98,10 +98,10 @@ class SBML2BSW():
     This Class uses all the previous ones to calculate and write the
     BSW files
     """
-    def __init__(self,model,OUTPATH,lvl):
+    def __init__(self,model,OUTPATH):
         self.model=model
         self.out=OUTPATH
-        self.lvl=lvl
+
     wd=os.path.dirname(os.path.abspath(__file__))
 
     def create_folder(self):
@@ -164,19 +164,13 @@ class SBML2BSW():
             self.id2name[a.ID]=Alph_element
 
             #-- prepare initial amount
-            amount=0
 
-            if self.lvl==3:
-                if isnan(a.amount):
-                    amount = float(a.conc)
-                else:
-                    amount=a.amount
-            elif self.lvl==2:
-                if not a.units:
-                    amount=a.amount
-                else:
-                    amount=a.conc
-                
+            amount=0
+            if isnan(a.amount):
+                amount=float(a.conc)
+            else:
+                amount=float(a.amount)
+
             alias = self.id2name[a.ID]
             index = self.ALPHABET.index(alias)
             
@@ -229,7 +223,6 @@ class SBML2BSW():
 
             #---- Create the constant vector
             if rc.kin_law != None:
-#                print("* direct", rc.ID)
                 if len(rc.kin_law.getListOfParameters())==0:
                     nomi_parametri = [par.getId() for par in self.model.getListOfParameters()]
                     parameters_in_kineticlaw = re.findall(r"[\w']+", rc.kin_law.getFormula())
@@ -252,14 +245,16 @@ class SBML2BSW():
                         pass
                     else:
                         #print ("ERROR: too many parameters in kinetic law, aborting")
-                        #print (list(parameters_in_kineticlaw))
+                        print (list(parameters_in_kineticlaw))
                         exit(-3)
+                    
                     for el in parameters_in_kineticlaw:
                         p=parameter(self.model.getParameter(el))
                         if p.value==0:
                             temp = 0
                             if not p.par_const:
-                                print ("WARNING: non constant parameter, assignment rule?")
+                                #print ("reaction",rc.name)
+                                #print ("WARNING: non constant parameter, assignment rule?")
                                 if self.model.getListOfRules().get(p.name).isParameter:
                                     tokenized_rule = model.getListOfRules().get(p.name).getFormula()
                                     if tokenized_rule[0:8] == 'stepfunc':
@@ -275,75 +270,31 @@ class SBML2BSW():
                                         except:
                                             pass
                                         
-                                    #print ("token =",temp)
-                                    self.PARAMS.append(temp)
-
-                            else:
-                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
-                                self.PARAMS.append(temp)
-
-                        else:
-#                            print(p.value)
-                            self.PARAMS.append(p.value)
-                            
-#if the length of rc.kin_law.getListOfParameters>0 we
-#still can have all the cases af before!
-
-                elif len(rc.kin_law.getListOfParameters())==1:
-                    p=parameter(rc.kin_law.getListOfParameters()[0])
-                    self.PARAMS.append(p.value)
-                    if rc.rev:
-                        print(" * reaction ",rc.name," has reverse ",rc.rev," but only one parameter given")
-                        self.PARAMS.append(0)
-                        create_reverse=True
-                        
-                elif len(rc.kin_law.getListOfParameters()) == 2:
-                    if rc.rev:
-                        create_reverse=True
-                        
-                    if len(rc.kin_law.getListOfParameters()) == 2:
-                        create_reverse=True
-                        print("* numero parametri = ", rc.kin_law.getListOfParameters())
-                        
-                    for el in rc.kin_law.getListOfParameters():
-                        p=parameter(el)
-                        print(p.par_const)
-                        print(p.value)
-                        if p.value==0:
-                            temp = 0
-                            if not p.par_const:
-                                print ("WARNING: non constant parameter, assignment rule?")
-                                if self.model.getListOfRules().get(p.name).isParameter:
-                                    tokenized_rule = model.getListOfRules().get(p.name).getFormula()
-                                    if tokenized_rule[0:8] == 'stepfunc':
-                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                        tokenized_rule = tokenized_rule.replace(")", "")
-                                    tokenized_rule = tokenized_rule.replace(",", "")
-                                    tokenized_rule =  tokenized_rule.split()
-                                    for token in tokenized_rule:
-                                        try:
-                                            temp = float(token)
-                                            if temp>0:
-                                                break
-                                        except:
-                                            pass
-                                        
-                                
                                     print ("token =",temp)
                                     self.PARAMS.append(temp)
-
-                            else:   
-                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+#                                    print(">>>>",p.ID,temp)
+                            else:
+                                #print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
                                 self.PARAMS.append(temp)
-
+#                                print(">>>",p.ID,temp)
                         else:
-                            print(p.name," in reaction ",rc.name)
                             self.PARAMS.append(p.value)
+#                            print(">>",p.ID,p.value)
                 else:
-                    print("WARNING: too many parameters")
+                    for p in rc.kin_law.getListOfParameters():
+                        self.PARAMS.append(p.value)
+                        print(">AA",p.name,p.value,rc.ID)
+                    if rc.rev:
+                        if len(rc.kin_law.getListOfParameters()) == 2:
+                            create_reverse=True
+                        else:
+                            print("WARNING: Reverse Flag = ", rc.rev,"But only 1 constant found!")
+                            print("Not considering reverse reaction for ",rc.ID)
+                    if len(rc.kin_law.getListOfParameters()) == 2:
+                        create_reverse=True
                     
+                        
                 if create_reverse:
-#                    print("* reverse",rc.ID)
                     self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
@@ -410,18 +361,17 @@ if __name__ == '__main__':
         exit(1)
     
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
-    level=sbml.getLevel()
     REACT = sbml.getModel()
 
-    SB=SBML2BSW(REACT,OUTPUT_FOLDER,level)
+    SB=SBML2BSW(REACT,OUTPUT_FOLDER)
     SB.create_folder()
     SB.react(REACT)
     SB.save()
 
     # #-- screen output --
     # separator()
-    #print("Reaction Names",SB.REACT_NAME)
-    print("Reaction Names",len(SB.REACT_NAME))
+    #    print("Reaction Names",SB.REACT_NAME)
+
     # separator()
     # print("PSA chemical species",SB.Dictionary)
     # separator()
@@ -429,7 +379,6 @@ if __name__ == '__main__':
     # separator()
     # print("Feed Species",SB.M_FEED)
     # separator()
-    #print("Parameters Vector",SB.PARAMS)
-    print("Parameters Vector",len(SB.PARAMS))
+    # print("Parameters Vector",SB.PARAMS)
     # separator()
     # #-- END  --
