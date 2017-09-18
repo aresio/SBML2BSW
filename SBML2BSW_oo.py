@@ -244,7 +244,31 @@ class SBML2BSW():
                         
                     elif len(parameters_in_kineticlaw)==1:
                         p=parameter(self.model.getParameter(parameters_in_kineticlaw[0]))
-                        self.PARAMS.append(p.value)
+                        if p.value==0:
+                            temp=0
+                            if not p_par_const:
+                                print ("WARNING: non constant parameter, assignment rule?")
+                                if self.model.getListOfRules().get(p.name).isParameter:
+                                    tokenized_rule = model.getListOfRules().get(p.name).getFormula()
+                                    if tokenized_rule[0:8] == 'stepfunc':
+                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                        tokenized_rule = tokenized_rule.replace(")", "")
+                                    tokenized_rule = tokenized_rule.replace(",", "")
+                                    tokenized_rule =  tokenized_rule.split()
+                                    for token in tokenized_rule:
+                                        try:
+                                            temp = float(token)
+                                            if temp>0:
+                                                break
+                                        except:
+                                            pass
+                                        self.PARAMS.append(temp)
+
+                            else:
+                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+                                self.PARAMS.append(temp)
+                        else:
+                            self.PARAMS.append(p.value)
                         if rc.rev:
                             print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
                             print ("Assuming Reverse reaction can't take place (constant=0)")
@@ -311,12 +335,10 @@ class SBML2BSW():
                         
                     if len(rc.kin_law.getListOfParameters()) == 2:
                         create_reverse=True
-                        print("* numero parametri = ", rc.kin_law.getListOfParameters())
+                        
                         
                     for el in rc.kin_law.getListOfParameters():
                         p=parameter(el)
-                        print(p.par_const)
-                        print(p.value)
                         if p.value==0:
                             temp = 0
                             if not p.par_const:
@@ -348,8 +370,9 @@ class SBML2BSW():
                             print(p.name," in reaction ",rc.name)
                             self.PARAMS.append(p.value)
                 else:
-                    print("WARNING: too many parameters")
-                    
+                    print("ERROR: too many parameters")
+                    print("Aborting")
+                    exit(-3)
                 if create_reverse:
 #                    print("* reverse",rc.ID)
                     self.REACT_NAME.append(rc.ID+" (reverse)")
@@ -428,7 +451,7 @@ if __name__ == '__main__':
 
     # #-- screen output --
     # separator()
-    #print("Reaction Names",SB.REACT_NAME)
+    print("Reaction Names",SB.REACT_NAME)
     print("Reaction Names",len(SB.REACT_NAME))
     # separator()
     # print("PSA chemical species",SB.Dictionary)
@@ -437,7 +460,7 @@ if __name__ == '__main__':
     # separator()
     # print("Feed Species",SB.M_FEED)
     # separator()
-    #print("Parameters Vector",SB.PARAMS)
+    print("Parameters Vector",SB.PARAMS)
     print("Parameters Vector",len(SB.PARAMS))
     # separator()
     # #-- END  --
