@@ -112,7 +112,7 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
         
-    def react(self,model,verbose=False):
+    def react(self,model,verbose=True):
 
         #list needed
         self.ALPHABET = []
@@ -236,7 +236,6 @@ class SBML2BSW():
                     parameters_in_kineticlaw = [x.strip() for x in parameters_in_kineticlaw ]
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticlaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticlaw))
-                    print (parameters_in_kineticlaw)
                     if len(parameters_in_kineticlaw)==0:
                         print ("parameters_in_kineticlaw==0")
                         print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
@@ -309,7 +308,6 @@ class SBML2BSW():
                                     self.PARAMS.append(temp)
 
                             else:
-                                print(p.value)
                                 self.PARAMS.append(p.value)
 
                     else:
@@ -322,7 +320,32 @@ class SBML2BSW():
 
                 elif len(rc.kin_law.getListOfParameters())==1:
                     p=parameter(rc.kin_law.getListOfParameters()[0])
-                    self.PARAMS.append(p.value)
+                    if p.value==0:
+                        temp=0
+                        if not p_par_const:
+                            print ("WARNING: non constant parameter, assignment rule?")
+                            if self.model.getListOfRules().get(p.name).isParameter:
+                                tokenized_rule = model.getListOfRules().get(p.name).getFormula()
+                                if tokenized_rule[0:8] == 'stepfunc':
+                                    tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                    tokenized_rule = tokenized_rule.replace(")", "")
+                                tokenized_rule = tokenized_rule.replace(",", "")
+                                tokenized_rule =  tokenized_rule.split()
+                                for token in tokenized_rule:
+                                    try:
+                                        temp = float(token)
+                                        if temp>0:
+                                            break
+                                    except:
+                                        pass
+                                    self.PARAMS.append(temp)
+
+                        else:
+                            print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+                            self.PARAMS.append(temp)
+                    else:
+                        self.PARAMS.append(p.value)
+
                     if rc.rev:
                         print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
                         print ("Assuming Reverse reaction can't take place (constant=0)")
@@ -367,7 +390,6 @@ class SBML2BSW():
                                 self.PARAMS.append(temp)
 
                         else:
-                            print(p.name," in reaction ",rc.name)
                             self.PARAMS.append(p.value)
                 else:
                     print("ERROR: too many parameters")
@@ -379,7 +401,7 @@ class SBML2BSW():
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
 
-    def save(self,verbose=False):
+    def save(self,verbose=True):
         os.chdir(self.out)
         
         if verbose:
