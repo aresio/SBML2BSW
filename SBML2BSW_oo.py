@@ -112,7 +112,7 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
         
-    def react(self,model,verbose=False):
+    def react(self,model,verbose=True):
 
         #list needed
         self.ALPHABET = []
@@ -219,7 +219,7 @@ class SBML2BSW():
                 tmp_reactants[index]=int(sto)
             self.LEFT.append(tmp_reactants)
 
-            #----Maniputlating the reactants of each reactio
+            #----Maniputlating the reactants of each reaction
             for prods in rc.prod_list:
                 sto=prods.getStoichiometry()
                 alias = self.id2name[prods.getSpecies()]
@@ -237,28 +237,15 @@ class SBML2BSW():
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticlaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticlaw))
                     if len(parameters_in_kineticlaw)==0:
-                        #print ("parameters_in_kineticlaw==0")
-                        #print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
+                        print ("parameters_in_kineticlaw==0")
+                        print ("ERROR: can't find any kinetic parameters for reaction", rc.ID)
                         exit(-3)
-                    elif rc.rev:
-                        #print ("WARNING: detected reversible reaction by getReversible", rc.ID)
-                        create_reverse = True
                         
-                    elif len(list(parameters_in_kineticlaw))==2:
-                        #print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
-                        create_reverse = True
-                        
-                    elif len(list(parameters_in_kineticlaw))==1:
-                        pass
-                    else:
-                        #print ("ERROR: too many parameters in kinetic law, aborting")
-                        #print (list(parameters_in_kineticlaw))
-                        exit(-3)
-                    for el in parameters_in_kineticlaw:
-                        p=parameter(self.model.getParameter(el))
+                    elif len(parameters_in_kineticlaw)==1:
+                        p=parameter(self.model.getParameter(parameters_in_kineticlaw[0]))
                         if p.value==0:
-                            temp = 0
-                            if not p.par_const:
+                            temp=0
+                            if not p_par_const:
                                 print ("WARNING: non constant parameter, assignment rule?")
                                 if self.model.getListOfRules().get(p.name).isParameter:
                                     tokenized_rule = model.getListOfRules().get(p.name).getFormula()
@@ -274,26 +261,94 @@ class SBML2BSW():
                                                 break
                                         except:
                                             pass
-                                        
-                                    #print ("token =",temp)
-                                    self.PARAMS.append(temp)
+                                        self.PARAMS.append(temp)
 
                             else:
                                 print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
                                 self.PARAMS.append(temp)
-
                         else:
-#                            print(p.value)
                             self.PARAMS.append(p.value)
-                            
+                        if rc.rev:
+                            print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
+                            print ("Assuming Reverse reaction can't take place (constant=0)")
+                            create_reverse = True
+                            self.PARAMS.append(0)
+                        
+                    elif len(list(parameters_in_kineticlaw))==2:
+                        if rc.rev:
+                            create_reverse = True
+                        else:
+                            print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
+                            create_reverse = True
+                        for el in parameters_in_kineticlaw:
+                            p=parameter(self.model.getParameter(el))
+                            if p.value==0:
+                                temp = 0
+                                if not p.par_const:
+                                    print ("WARNING: non constant parameter, assignment rule?")
+                                    if self.model.getListOfRules().get(p.name).isParameter:
+                                        tokenized_rule = model.getListOfRules().get(p.name).getFormula()
+                                        if tokenized_rule[0:8] == 'stepfunc':
+                                            tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                            tokenized_rule = tokenized_rule.replace(")", "")
+                                        tokenized_rule = tokenized_rule.replace(",", "")
+                                        tokenized_rule =  tokenized_rule.split()
+                                        for token in tokenized_rule:
+                                            try:
+                                                temp = float(token)
+                                                if temp>0:
+                                                    break
+                                            except:
+                                                pass
+
+                                            self.PARAMS.append(temp)
+
+                                else:
+                                    print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+                                    self.PARAMS.append(temp)
+
+                            else:
+                                self.PARAMS.append(p.value)
+
+                    else:
+                        print ("ERROR: too many parameters in kinetic law, aborting")
+                        print (list(parameters_in_kineticlaw))
+                        print (len(list(parameters_in_kineticlaw)))
+                        exit(-3)
 #if the length of rc.kin_law.getListOfParameters>0 we
 #still can have all the cases af before!
 
                 elif len(rc.kin_law.getListOfParameters())==1:
                     p=parameter(rc.kin_law.getListOfParameters()[0])
-                    self.PARAMS.append(p.value)
+                    if p.value==0:
+                        temp=0
+                        if not p_par_const:
+                            print ("WARNING: non constant parameter, assignment rule?")
+                            if self.model.getListOfRules().get(p.name).isParameter:
+                                tokenized_rule = model.getListOfRules().get(p.name).getFormula()
+                                if tokenized_rule[0:8] == 'stepfunc':
+                                    tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                                    tokenized_rule = tokenized_rule.replace(")", "")
+                                tokenized_rule = tokenized_rule.replace(",", "")
+                                tokenized_rule =  tokenized_rule.split()
+                                for token in tokenized_rule:
+                                    try:
+                                        temp = float(token)
+                                        if temp>0:
+                                            break
+                                    except:
+                                        pass
+                                    self.PARAMS.append(temp)
+
+                        else:
+                            print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
+                            self.PARAMS.append(temp)
+                    else:
+                        self.PARAMS.append(p.value)
+
                     if rc.rev:
-                        print("WARNING: reaction ",rc.name," has reverse ",rc.rev," but only one parameter given")
+                        print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
+                        print ("Assuming Reverse reaction can't take place (constant=0)")
                         self.PARAMS.append(0)
                         create_reverse=True
                         
@@ -303,7 +358,8 @@ class SBML2BSW():
                         
                     if len(rc.kin_law.getListOfParameters()) == 2:
                         create_reverse=True
-
+                        
+                        
                     for el in rc.kin_law.getListOfParameters():
                         p=parameter(el)
                         if p.value==0:
@@ -334,17 +390,18 @@ class SBML2BSW():
                                 self.PARAMS.append(temp)
 
                         else:
-                            print(p.name," in reaction ",rc.name)
                             self.PARAMS.append(p.value)
                 else:
-                    print("WARNING: too many parameters")
-                    
+                    print("ERROR: too many parameters")
+                    print("Aborting")
+                    exit(-3)
                 if create_reverse:
+#                    print("* reverse",rc.ID)
                     self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
 
-    def save(self,verbose=False):
+    def save(self,verbose=True):
         os.chdir(self.out)
         
         if verbose:
@@ -414,18 +471,18 @@ if __name__ == '__main__':
     SB.react(REACT)
     SB.save()
 
-    #-- screen output --
-    separator()
+    # #-- screen output --
+    # separator()
     print("Reaction Names",SB.REACT_NAME)
     print("Reaction Names",len(SB.REACT_NAME))
-    separator()
-    print("PSA chemical species",SB.Dictionary)
-    separator()
-    print("Chemicals Initial Amount",SB.IN_AMOUNT)
-    separator()
-    print("Feed Species",SB.M_FEED)
-    separator()
+    # separator()
+    # print("PSA chemical species",SB.Dictionary)
+    # separator()
+    # print("Chemicals Initial Amount",SB.IN_AMOUNT)
+    # separator()
+    # print("Feed Species",SB.M_FEED)
+    # separator()
     print("Parameters Vector",SB.PARAMS)
     print("Parameters Vector",len(SB.PARAMS))
-    separator()
+    # separator()
     # #-- END  --
