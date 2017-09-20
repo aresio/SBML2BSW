@@ -111,7 +111,39 @@ class SBML2BSW():
         try: os.mkdir(self.out)
         except: print ("WARNING: directory", self.out, "already exists")
             
-        
+
+    def Rule_Decypher(self,param,model):
+        """
+        This method is used when a parameter found in a reaction equals 0
+        and it's not constant: it's calculated with an assignment rule.
+        The method extracts the token from the rule and, if they're numbers
+        grater than 0, appends them to the vector of parameters
+
+        """
+        temp = 0
+        if not param.par_const:
+            print ("WARNING: non constant parameter, assignment rule?")
+            if self.model.getListOfRules().get(param.name).isParameter:
+                tokenized_rule = model.getListOfRules().get(param.name).getFormula()
+                if tokenized_rule[0:8] == 'stepfunc':
+                    tokenized_rule = tokenized_rule.replace("stepfunc(", "")
+                    tokenized_rule = tokenized_rule.replace(")", "")
+                tokenized_rule = tokenized_rule.replace(",", "")
+                tokenized_rule =  tokenized_rule.split()
+                for token in tokenized_rule:
+                    try:
+                        temp = float(token)
+                        if temp>0:
+                            break
+                    except:
+                        pass
+                    
+                    self.PARAMS.append(temp)
+                    
+        else:
+            print ("WARNING: constant value set to 0, parameter:", param.name," ",temp)
+            self.PARAMS.append(temp)
+                
     def react(self,model,verbose=True):
 
         #list needed
@@ -229,11 +261,11 @@ class SBML2BSW():
 
             #---- Create the constant vector
             if rc.kin_law != None:
-#                print("* direct", rc.ID)
                 if len(rc.kin_law.getListOfParameters())==0:
                     nomi_parametri = [par.getId() for par in self.model.getListOfParameters()]
                     parameters_in_kineticlaw = re.findall(r"[\w']+", rc.kin_law.getFormula())
                     parameters_in_kineticlaw = [x.strip() for x in parameters_in_kineticlaw ]
+                    
                     #filter object in python3 don't have len attribute, converting to string
                     parameters_in_kineticlaw = list(filter( lambda x: x in nomi_parametri, parameters_in_kineticlaw))
                     if len(parameters_in_kineticlaw)==0:
@@ -244,28 +276,7 @@ class SBML2BSW():
                     elif len(parameters_in_kineticlaw)==1:
                         p=parameter(self.model.getParameter(parameters_in_kineticlaw[0]))
                         if p.value==0:
-                            temp=0
-                            if not p_par_const:
-                                print ("WARNING: non constant parameter, assignment rule?")
-                                if self.model.getListOfRules().get(p.name).isParameter:
-                                    tokenized_rule = model.getListOfRules().get(p.name).getFormula()
-                                    if tokenized_rule[0:8] == 'stepfunc':
-                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                        tokenized_rule = tokenized_rule.replace(")", "")
-                                    tokenized_rule = tokenized_rule.replace(",", "")
-                                    tokenized_rule =  tokenized_rule.split()
-                                    for token in tokenized_rule:
-                                        try:
-                                            temp = float(token)
-                                            if temp>0:
-                                                break
-                                        except:
-                                            pass
-                                        self.PARAMS.append(temp)
-
-                            else:
-                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
-                                self.PARAMS.append(temp)
+                            Rule_Decypher(self,p,model)
                         else:
                             self.PARAMS.append(p.value)
                         if rc.rev:
@@ -283,30 +294,7 @@ class SBML2BSW():
                         for el in parameters_in_kineticlaw:
                             p=parameter(self.model.getParameter(el))
                             if p.value==0:
-                                temp = 0
-                                if not p.par_const:
-                                    print ("WARNING: non constant parameter, assignment rule?")
-                                    if self.model.getListOfRules().get(p.name).isParameter:
-                                        tokenized_rule = model.getListOfRules().get(p.name).getFormula()
-                                        if tokenized_rule[0:8] == 'stepfunc':
-                                            tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                            tokenized_rule = tokenized_rule.replace(")", "")
-                                        tokenized_rule = tokenized_rule.replace(",", "")
-                                        tokenized_rule =  tokenized_rule.split()
-                                        for token in tokenized_rule:
-                                            try:
-                                                temp = float(token)
-                                                if temp>0:
-                                                    break
-                                            except:
-                                                pass
-
-                                            self.PARAMS.append(temp)
-
-                                else:
-                                    print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
-                                    self.PARAMS.append(temp)
-
+                                self.Rule_Decypher(p,model)
                             else:
                                 self.PARAMS.append(p.value)
 
@@ -321,31 +309,10 @@ class SBML2BSW():
                 elif len(rc.kin_law.getListOfParameters())==1:
                     p=parameter(rc.kin_law.getListOfParameters()[0])
                     if p.value==0:
-                        temp=0
-                        if not p_par_const:
-                            print ("WARNING: non constant parameter, assignment rule?")
-                            if self.model.getListOfRules().get(p.name).isParameter:
-                                tokenized_rule = model.getListOfRules().get(p.name).getFormula()
-                                if tokenized_rule[0:8] == 'stepfunc':
-                                    tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                    tokenized_rule = tokenized_rule.replace(")", "")
-                                tokenized_rule = tokenized_rule.replace(",", "")
-                                tokenized_rule =  tokenized_rule.split()
-                                for token in tokenized_rule:
-                                    try:
-                                        temp = float(token)
-                                        if temp>0:
-                                            break
-                                    except:
-                                        pass
-                                    self.PARAMS.append(temp)
-
-                        else:
-                            print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
-                            self.PARAMS.append(temp)
+                        Rule_Decypher(self,p,model)
                     else:
                         self.PARAMS.append(p.value)
-
+                        
                     if rc.rev:
                         print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
                         print ("Assuming Reverse reaction can't take place (constant=0)")
@@ -359,44 +326,19 @@ class SBML2BSW():
                     if len(rc.kin_law.getListOfParameters()) == 2:
                         create_reverse=True
                         
-                        
                     for el in rc.kin_law.getListOfParameters():
-                        p=parameter(el)
+                        p=parameter(rc.kin_law.getListOfParameters()[0])
                         if p.value==0:
-                            temp = 0
-                            if not p.par_const:
-                                print ("WARNING: non constant parameter, assignment rule?")
-                                if self.model.getListOfRules().get(p.name).isParameter:
-                                    tokenized_rule = model.getListOfRules().get(p.name).getFormula()
-                                    if tokenized_rule[0:8] == 'stepfunc':
-                                        tokenized_rule = tokenized_rule.replace("stepfunc(", "")
-                                        tokenized_rule = tokenized_rule.replace(")", "")
-                                    tokenized_rule = tokenized_rule.replace(",", "")
-                                    tokenized_rule =  tokenized_rule.split()
-                                    for token in tokenized_rule:
-                                        try:
-                                            temp = float(token)
-                                            if temp>0:
-                                                break
-                                        except:
-                                            pass
-                                        
-                                
-                                    print ("token =",temp)
-                                    self.PARAMS.append(temp)
-
-                            else:   
-                                print ("WARNING: constant value set to 0, parameter:", p.name," ",temp)
-                                self.PARAMS.append(temp)
-
+                            Rule_Decypher(self,p,model)
                         else:
                             self.PARAMS.append(p.value)
+                            
                 else:
                     print("ERROR: too many parameters")
                     print("Aborting")
                     exit(-3)
+                    
                 if create_reverse:
-#                    print("* reverse",rc.ID)
                     self.REACT_NAME.append(rc.ID+" (reverse)")
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
@@ -471,18 +413,18 @@ if __name__ == '__main__':
     SB.react(REACT)
     SB.save()
 
-    # #-- screen output --
-    # separator()
+    #-- screen output --
+    separator()
     print("Reaction Names",SB.REACT_NAME)
     print("Reaction Names",len(SB.REACT_NAME))
-    # separator()
-    # print("PSA chemical species",SB.Dictionary)
-    # separator()
-    # print("Chemicals Initial Amount",SB.IN_AMOUNT)
-    # separator()
-    # print("Feed Species",SB.M_FEED)
-    # separator()
+    separator()
+    print("PSA chemical species",SB.Dictionary)
+    separator()
+    print("Chemicals Initial Amount",SB.IN_AMOUNT)
+    separator()
+    print("Feed Species",SB.M_FEED)
+    separator()
     print("Parameters Vector",SB.PARAMS)
     print("Parameters Vector",len(SB.PARAMS))
-    # separator()
-    # #-- END  --
+    separator()
+    #-- END  --
