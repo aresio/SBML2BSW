@@ -207,7 +207,6 @@ class SBML2BSW():
 
             elif self.lvl==2:
                 if not a.conc:
-                    print("AAA")
                     amount=a.amount
                 else:
                     amount=a.conc
@@ -408,7 +407,7 @@ if __name__ == '__main__':
         exit(1)
 
 
-    verbose=True
+    verbose=False
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     level=sbml.getLevel()
     REACT = sbml.getModel()
@@ -434,6 +433,6 @@ if __name__ == '__main__':
         
         separator()
 
-        print("Reaction Names",len(SB.REACT_NAME))
-        print("Parameters Vector",len(SB.PARAMS))
+    print("Reaction Names",len(SB.REACT_NAME))
+    print("Parameters Vector",len(SB.PARAMS))
     #-- END  --
