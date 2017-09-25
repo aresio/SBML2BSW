@@ -98,10 +98,11 @@ class SBML2BSW():
     This Class uses all the previous ones to calculate and write the
     BSW files
     """
-    def __init__(self,model,OUTPATH,lvl):
+    def __init__(self,model,OUTPATH,lvl,verbose):
         self.model=model
         self.out=OUTPATH
         self.lvl=lvl
+        self.verbose=verbose
     wd=os.path.dirname(os.path.abspath(__file__))
 
     def create_folder(self):
@@ -144,7 +145,7 @@ class SBML2BSW():
             print ("WARNING: constant value set to 0, parameter:", param.name," ",temp)
             self.PARAMS.append(temp)
                 
-    def react(self,model,verbose=True):
+    def react(self,model,verbose):
 
         #list needed
         self.ALPHABET = []
@@ -203,8 +204,10 @@ class SBML2BSW():
                     amount = float(a.conc)
                 else:
                     amount=a.amount
+
             elif self.lvl==2:
-                if not a.units:
+                if not a.conc:
+                    print("AAA")
                     amount=a.amount
                 else:
                     amount=a.conc
@@ -343,7 +346,7 @@ class SBML2BSW():
                     self.LEFT.append(tmp_products)
                     self.RIGHT.append(tmp_reactants)
 
-    def save(self,verbose=True):
+    def save(self,verbose):
         os.chdir(self.out)
         
         if verbose:
@@ -403,28 +406,34 @@ if __name__ == '__main__':
         """
         print(error_string)
         exit(1)
-    
+
+
+    verbose=True
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     level=sbml.getLevel()
     REACT = sbml.getModel()
 
-    SB=SBML2BSW(REACT,OUTPUT_FOLDER,level)
+    
+    SB=SBML2BSW(REACT,OUTPUT_FOLDER,level,verbose)
     SB.create_folder()
-    SB.react(REACT)
-    SB.save()
+    SB.react(REACT,verbose)
+    SB.save(verbose)
 
     #-- screen output --
-    separator()
-    print("Reaction Names",SB.REACT_NAME)
-    print("Reaction Names",len(SB.REACT_NAME))
-    separator()
-    print("PSA chemical species",SB.Dictionary)
-    separator()
-    print("Chemicals Initial Amount",SB.IN_AMOUNT)
-    separator()
-    print("Feed Species",SB.M_FEED)
-    separator()
-    print("Parameters Vector",SB.PARAMS)
-    print("Parameters Vector",len(SB.PARAMS))
-    separator()
+    if verbose:
+        separator()
+        print("Reaction Names",SB.REACT_NAME)
+        separator()
+        print("PSA chemical species",SB.Dictionary)
+        separator()
+        print("Chemicals Initial Amount",SB.IN_AMOUNT)
+        separator()
+        print("Feed Species",SB.M_FEED)
+        separator()
+        print("Parameters Vector",SB.PARAMS)
+        
+        separator()
+
+        print("Reaction Names",len(SB.REACT_NAME))
+        print("Parameters Vector",len(SB.PARAMS))
     #-- END  --
