@@ -328,13 +328,14 @@ class SBML2BSW():
                     if len(rc.kin_law.getListOfParameters()) == 2:
                         create_reverse=True
                         
-                    for el in rc.kin_law.getListOfParameters():
-                        p=parameter(rc.kin_law.getListOfParameters()[0])
-                        if p.value==0:
-                            Rule_Decypher(self,p,model)
-                        else:
-                            self.PARAMS.append(p.value)
-                            
+                    p1=parameter(rc.kin_law.getListOfParameters()[0])
+                    p2=parameter(rc.kin_law.getListOfParameters()[1])
+                    if p1.value==0:
+                        Rule_Decypher(self,p,model)
+                    else:
+                        self.PARAMS.append(p1.value)
+                        self.PARAMS.append(p2.value)
+
                 else:
                     print("ERROR: too many parameters")
                     print("Aborting")
@@ -407,7 +408,7 @@ if __name__ == '__main__':
         exit(1)
 
 
-    verbose=False
+    verbose=True
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     level=sbml.getLevel()
     REACT = sbml.getModel()
