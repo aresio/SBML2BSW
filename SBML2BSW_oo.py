@@ -154,11 +154,14 @@ class SBML2BSW():
         self.IN_AMOUNT = []
         self.M_FEED = []
         self.LEFT = []
+        self.LEFT_REV = []
         self.RIGHT = []
+        self.RIGHT_REV = []
         self.PARAMS = []
         self.REACT_NAME = []
         self.BOUNDIARIES = []
         self.FLUX_BOUND = []
+
 
         #usefull dictionaries
         self.id2name = {}
@@ -342,9 +345,17 @@ class SBML2BSW():
                     exit(-3)
                     
                 if create_reverse:
+                    #reverse reactions name are directly appended to the name vector
+                    #as fo the constants
                     self.REACT_NAME.append(rc.ID+" (reverse)")
-                    self.LEFT.append(tmp_products)
-                    self.RIGHT.append(tmp_reactants)
+                    #reverse reaction products and reactant are added to lists
+                    #that will be merged later to LEFT and RIGHT
+                    self.LEFT_REV.append(tmp_products)
+                    self.RIGHT_REV.append(tmp_reactants)
+        
+        self.LEFT.extend(self.LEFT_REV)
+        self.RIGHT.extend(self.RIGHT_REV)
+ 
 
     def save(self,verbose):
         os.chdir(self.out)
