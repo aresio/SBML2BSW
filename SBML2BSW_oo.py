@@ -139,8 +139,11 @@ class SBML2BSW():
                     except:
                         pass
                     
-                    self.PARAMS.append(temp)
-                    
+                    if isnan(temp):
+                        print("WARNING: The parameter ",p.ID," is 'nan': stopping execution")
+                        exit(-3)
+                    else:
+                        self.PARAMS.append(temp)
         else:
             print ("WARNING: constant value set to 0, parameter:", param.name," ",temp)
             self.PARAMS.append(temp)
@@ -283,9 +286,13 @@ class SBML2BSW():
                         if p.value==0:
                             Rule_Decypher(self,p,model)
                         else:
-                            self.PARAMS.append(p.value)
+                            if isnan(p.value):
+                                print("WARNING: The parameter ",p.ID," is 'nan': stopping execution")
+                                exit(-3)
+                            else:
+                                self.PARAMS.append(p.value)
                         if rc.rev:
-                            print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
+                            print ("WARNING: Detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
                             print ("Assuming Reverse reaction can't take place (constant=0)")
                             create_reverse = True
                             self.PARAMS.append(0)
@@ -294,15 +301,18 @@ class SBML2BSW():
                         if rc.rev:
                             create_reverse = True
                         else:
-                            print ("WARNING: detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
+                            print ("WARNING: Detected two parameters in kinetic law of reaction", rc.ID, ", assuming reversible reaction")
                             create_reverse = True
                         for el in parameters_in_kineticlaw:
                             p=parameter(self.model.getParameter(el))
                             if p.value==0:
                                 self.Rule_Decypher(p,model)
                             else:
-                                self.PARAMS.append(p.value)
-
+                                if isnan(p.value):
+                                    print("WARNING: The parameter ",p.ID," is 'nan': stopping execution")
+                                    exit(-3)
+                                else:
+                                    self.PARAMS.append(p.value)
                     else:
                         print ("ERROR: too many parameters in kinetic law, aborting")
                         print (list(parameters_in_kineticlaw))
@@ -396,7 +406,7 @@ class SBML2BSW():
             print (" * Creating 'boundaries' matrix for FBA fluxes limits")
         numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
         if verbose: print("DONE")
-
+        
 #==== END ====
 
 if __name__ == '__main__':
@@ -433,7 +443,7 @@ if __name__ == '__main__':
     #-- screen output --
     if verbose:
         separator()
-        print("Reaction Names",SB.REACT_NAME)
+        print("Reaction Names",str(SB.REACT_NAME))
         separator()
         print("PSA chemical species",SB.Dictionary)
         separator()

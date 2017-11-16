@@ -355,7 +355,7 @@ def separator():
 
 if __name__ == '__main__':
 
-    INPUT_FILE = "Breast_core.xml"
+    INPUT_FILE = "Chen2009-BIOMD0000000255.xml"
     OUTPUT_FOLDER = "./output_marzia"
 
     if len(sys.argv)>1: INPUT_FILE = sys.argv[1]
