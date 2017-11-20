@@ -98,9 +98,10 @@ class SBML2BSW():
     This Class uses all the previous ones to calculate and write the
     BSW files
     """
-    def __init__(self,model,OUTPATH,lvl,verbose):
+    def __init__(self,model,REV_MODE,OUTPATH,lvl,verbose):
         self.model=model
         self.out=OUTPATH
+        self.rev_mode=REV_MODE
         self.lvl=lvl
         self.verbose=verbose
     wd=os.path.dirname(os.path.abspath(__file__))
@@ -148,7 +149,7 @@ class SBML2BSW():
             print ("WARNING: constant value set to 0, parameter:", param.name," ",temp)
             self.PARAMS.append(temp)
                 
-    def react(self,model,verbose):
+    def react(self,model,rev_mode,verbose):
 
         #list needed
         self.ALPHABET = []
@@ -170,7 +171,7 @@ class SBML2BSW():
         self.id2name = {}
         self.Dictionary = {}
 
-        
+        print("rev_mode----->",rev_mode) 
         for chem in model.getListOfSpecies():
             a=species(chem)
             self.Species_list.append(a)
@@ -293,10 +294,18 @@ class SBML2BSW():
                                 self.PARAMS.append(p.value)
                         if rc.rev:
                             print ("WARNING: Detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
-                            print ("Assuming Reverse reaction can't take place (constant=0)")
-                            create_reverse = True
-                            self.PARAMS.append(0)
-                        
+                            if int(rev_mode == 0):
+                                print ("Stopping and quitting (REV_MODE=0)")
+                                exit(-3)
+                            elif int(rev_mode == 1):
+                                print ("Assuming Reverse reaction can't take place (constant=0)")
+                                create_reverse = True
+                                self.PARAMS.append(0)
+                            elif int(rev_mode == 2):
+                                print("Assuming Reverse reaction has the same constatnt as the direct (",p.value,")")
+                                create_reverse = True
+                                self.PARAMS.append(p.value)
+
                     elif len(list(parameters_in_kineticlaw))==2:
                         if rc.rev:
                             create_reverse = True
@@ -329,10 +338,19 @@ class SBML2BSW():
                         self.PARAMS.append(p.value)
                         
                     if rc.rev:
-                        print ("WARNING: detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
-                        print ("Assuming Reverse reaction can't take place (constant=0)")
-                        self.PARAMS.append(0)
-                        create_reverse=True
+                        print ("WARNING: Detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
+                        print(">>>>>",rev_mode)
+                        if int(rev_mode) == 0:
+                            print ("Stopping and quitting (REV_MODE=0)")
+                            exit(-3)
+                        elif int(rev_mode) == 1:
+                            print ("Assuming Reverse reaction can't take place (constant=0)")
+                            create_reverse = True
+                            self.PARAMS.append(0)
+                        elif int(rev_mode) == 2:
+                            print("Assuming Reverse reaction has the same constatnt as the direct (",p.value,")")
+                            create_reverse = True
+                            self.PARAMS.append(p.value)
                         
                 elif len(rc.kin_law.getListOfParameters()) == 2:
                     if rc.rev:
@@ -365,7 +383,7 @@ class SBML2BSW():
         
         self.LEFT.extend(self.LEFT_REV)
         self.RIGHT.extend(self.RIGHT_REV)
- 
+    
 
     def save(self,verbose):
         os.chdir(self.out)
@@ -412,32 +430,70 @@ class SBML2BSW():
 if __name__ == '__main__':
 
     REACT = None
+    
+    
+    error_string="""
+    
+    ===========================================================================
 
-    if len(sys.argv)>1:
+    Positional Argument 1: path to input file
+
+    Positional Argument 2 (optional): reverse mode: if theres a conflinct between the
+    "reversible" flag and the number of constant, what the converter should do?
+        Valules = 0,1,2
+        0 : the execution is stopped (default)
+        1 : the reverse reaction constant is 0 (reverser reaction switched off)
+        2 : the reverse reaction costant equals the direct reaction one
+
+    Positional Argument 3: output folder (optional, default './output')
+
+    ===========================================================================
+    """
+
+    if len(sys.argv)==1:
+        print("WARNING: No input file given")
+        print(error_string)
+        exit(-3)
+
+    elif len(sys.argv)==2:
         INPUT_FILE = sys.argv[1]
+        
+        print("WARNING: No output folder given, a './output' will be created")
+        OUTPUT_FOLDER = "./output"
+        
+        print("WARNING: No REV_MODE defined: using default(0)")
+        REV_MODE=0
+
+    elif len(sys.argv)==3:
+        INPUT_FILE = sys.argv[1]
+        print("WARNING: No REV_MODE defined: using default(0)")
+        REV_MODE=0
         try:
             OUTPUT_FOLDER = sys.argv[2]
         except:
             OUTPUT_FOLDER = "./output"
     else:
-        error_string = """
-        No input file specified 
-        Positional Argument 1: path to input file
-        Positional Argument 2: output folder (optional, default './output')
-        """
-        print(error_string)
-        exit(1)
+        INPUT_FILE = sys.argv[1]
+        if sys.argv[2].isdigit() and int(sys.argv[2])<=2:
+            REV_MODE=sys.argv[2]
+        else:
+            print("WARNING: Incorrect REV_MODE")
+            print(error_string)
+            exit(-3)
+        try:
+            OUTPUT_FOLDER = sys.argv[3]
+        except:
+            OUTPUT_FOLDER = "./output"
 
-
-    verbose=True
+    verbose=False
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     level=sbml.getLevel()
     REACT = sbml.getModel()
 
     
-    SB=SBML2BSW(REACT,OUTPUT_FOLDER,level,verbose)
+    SB=SBML2BSW(REACT,REV_MODE,OUTPUT_FOLDER,level,verbose)
     SB.create_folder()
-    SB.react(REACT,verbose)
+    SB.react(REACT,REV_MODE,verbose)
     SB.save(verbose)
 
     #-- screen output --
