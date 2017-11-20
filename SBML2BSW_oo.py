@@ -170,8 +170,7 @@ class SBML2BSW():
         #usefull dictionaries
         self.id2name = {}
         self.Dictionary = {}
-
-        print("rev_mode----->",rev_mode) 
+ 
         for chem in model.getListOfSpecies():
             a=species(chem)
             self.Species_list.append(a)
@@ -339,7 +338,6 @@ class SBML2BSW():
                         
                     if rc.rev:
                         print ("WARNING: Detected reversible reaction by getReversible", rc.ID,"but only one parameter defined")
-                        print(">>>>>",rev_mode)
                         if int(rev_mode) == 0:
                             print ("Stopping and quitting (REV_MODE=0)")
                             exit(-3)
@@ -436,7 +434,9 @@ if __name__ == '__main__':
     
     ===========================================================================
 
-    Positional Argument 1: path to input file
+    SBML2BSW converts your SBML (level 2 and 3) in inputs for the LASSIE simulator
+
+    Positional Argument 1: path to input file. Accepted formats: SBML level 2 and 3
 
     Positional Argument 2 (optional): reverse mode: if theres a conflinct between the
     "reversible" flag and the number of constant, what the converter should do?
