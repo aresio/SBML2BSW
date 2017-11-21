@@ -450,37 +450,48 @@ class SBML2BSW():
 
 if __name__ == '__main__':
 
-    error_string="""
-    
-    ===========================================================================
 
+    description_string="""
+    =============================================================================
     SBML2BSW converts your SBML (level 2 and 3) in inputs for the LASSIE simulator
 
-    Positional Argument 1: path to input file. Accepted formats: SBML level 2 and 3
+    Arguments: 
+        --i input file: a SBML level 2 or 3. Required 
 
-    Positional Argument 2 (optional): reverse mode: if theres a conflinct between the
-    "reversible" flag and the number of constant, what the converter should do?
-        Valules = 0,1,2
-        0 : the execution is stopped (default)
-        1 : the reverse reaction constant is 0 (reverser reaction switched off)
-        2 : the reverse reaction costant equals the direct reaction one
+        --o output folder: if it does not exists, it will be created. 
+            Default = "./output"
 
-    Positional Argument 3: output folder (optional, default './output')
+        --m reverse mode: of there a conflict between the "reversible" flag and 
+            the number of constants, what the converter should do?
+            0 : the execution is stopped (default)
+            1 : the reverse reaction constant is 0 (reverser reaction switched off)
+            2 : the reverse reaction costant equals the direct reaction one
+            Default = "0" 
+    
+        --points sampling: how many sampling you want? It's the number in the 
+            t_vector.
+            Default = 5
+        
+        --interval time between each sampling point. Default = 2
 
-    ===========================================================================
+        --v Verbose. Default = False
+    ============================================================================
     """
 
+    if len(sys.argv)==1:
+        print (description_string)
+        exit(-3)
 
     #---flags for arguments---
 
-    parser = argparse.ArgumentParser(description='Short sample app')
+    parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument('--i', action="store", default = False, required=True, type=str,)
-    parser.add_argument('--m', action="store", default= 0 ,type=int),
-    parser.add_argument('--o', action="store", default = "./output" , type=str)
-    parser.add_argument('--points',action="store",default = 5,type=int)
-    parser.add_argument('--interval',action="store",default = 2,type=int)
-    parser.add_argument('--v',action="store", default = False, type=bool)
+    parser.add_argument('--i', action="store", default = False, required=True, type=str,help="Your input file: SBML 2 or 3")
+    parser.add_argument('--m', action="store", default= 0 ,type=int,help="If the reversible flag is true but only constant is given, what should the program do?")
+    parser.add_argument('--o', action="store", default = "./output" , type=str,help="Output folder: default = './output'")
+    parser.add_argument('--points',action="store",default = 5,type=int, help="Number of sampling: default = 5" )
+    parser.add_argument('--interval',action="store",default = 2,type=int, help="Time between sampling: default = 2" )
+    parser.add_argument('--v',action="store", default = False, type=bool, help="Verbose: default = False")
     prs=parser.parse_args()
 
     print(prs.i,prs.o,prs.m,prs.points,prs.interval)
