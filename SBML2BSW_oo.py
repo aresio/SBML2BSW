@@ -82,6 +82,7 @@ class reaction(SBML_Object):
         self.prod_list = rt.getListOfProducts()
         self.rev = rt.getReversible()
         self.react_comp = rt.getCompartment()
+
 #===== END =====    
 
 #==== Useful Functions ====
@@ -113,7 +114,22 @@ class SBML2BSW():
         try: os.mkdir(self.out)
         except: print ("WARNING: directory", self.out, "already exists")
             
+    
+    def time(points,interval):
+        """
+        Creates a vector of times needed by LASSIE (t_vector)
+        """
+        T_VECTOR=[]
+        counter=0
+        while counter<=points:
+            T_VECTOR.append(interval*counter)
+            counter=counter+1
+        
+        return T_VECTOR
 
+
+    
+    
     def Rule_Decypher(self,param,model):
         """
         This method is used when a parameter found in a reaction equals 0
@@ -381,7 +397,10 @@ class SBML2BSW():
         
         self.LEFT.extend(self.LEFT_REV)
         self.RIGHT.extend(self.RIGHT_REV)
+        
     
+    T_VECTOR=time(10,5)
+
 
     def save(self,verbose):
         os.chdir(self.out)
@@ -422,6 +441,10 @@ class SBML2BSW():
             print (" * Creating 'boundaries' matrix for FBA fluxes limits")
         numpy.savetxt("boundaries",self.FLUX_BOUND,fmt="%e",delimiter="\t")
         if verbose: print("DONE")
+        
+        if verbose:
+            print(" * Creating 'time' vector")
+        numpy.savetxt("t_vector",self.T_VECTOR,fmt="%e",delimiter="\n")
         
 #==== END ====
 
