@@ -7,6 +7,7 @@ import numpy
 import re
 from numpy import savetxt
 from math import isnan
+import argparse
 
 #===== Constructors Definitions =====
 class SBML_Object(object):
@@ -99,12 +100,14 @@ class SBML2BSW():
     This Class uses all the previous ones to calculate and write the
     BSW files
     """
-    def __init__(self,model,REV_MODE,OUTPATH,lvl,verbose):
+    def __init__(self,model,REV_MODE,OUTPATH,lvl,verbose,TIME_POINTS,TIME_INTERVAL):
         self.model=model
         self.out=OUTPATH
         self.rev_mode=REV_MODE
         self.lvl=lvl
         self.verbose=verbose
+        self.points=TIME_POINTS
+        self.interval=TIME_INTERVAL
     wd=os.path.dirname(os.path.abspath(__file__))
 
     def create_folder(self):
@@ -115,20 +118,18 @@ class SBML2BSW():
         except: print ("WARNING: directory", self.out, "already exists")
             
     
-    def time(points,interval):
+    def Time(self,points,interval):
+
         """
         Creates a vector of times needed by LASSIE (t_vector)
         """
-        T_VECTOR=[]
+        self.T_VECTOR=[]
         counter=0
         while counter<=points:
-            T_VECTOR.append(interval*counter)
+            self.T_VECTOR.append(interval*counter)
             counter=counter+1
         
-        return T_VECTOR
-
-
-    
+        #return T_VECTOR
     
     def Rule_Decypher(self,param,model):
         """
@@ -165,7 +166,8 @@ class SBML2BSW():
             print ("WARNING: constant value set to 0, parameter:", param.name," ",temp)
             self.PARAMS.append(temp)
                 
-    def react(self,model,rev_mode,verbose):
+    def react(self,model,rev_mode,verbose,points,interval):
+        
 
         #list needed
         self.ALPHABET = []
@@ -399,8 +401,6 @@ class SBML2BSW():
         self.RIGHT.extend(self.RIGHT_REV)
         
     
-    T_VECTOR=time(10,5)
-
 
     def save(self,verbose):
         os.chdir(self.out)
@@ -450,9 +450,6 @@ class SBML2BSW():
 
 if __name__ == '__main__':
 
-    REACT = None
-    
-    
     error_string="""
     
     ===========================================================================
@@ -473,50 +470,38 @@ if __name__ == '__main__':
     ===========================================================================
     """
 
-    if len(sys.argv)==1:
-        print("WARNING: No input file given")
-        print(error_string)
-        exit(-3)
 
-    elif len(sys.argv)==2:
-        INPUT_FILE = sys.argv[1]
-        
-        print("WARNING: No output folder given, a './output' will be created")
-        OUTPUT_FOLDER = "./output"
-        
-        print("WARNING: No REV_MODE defined: using default(0)")
-        REV_MODE=0
+    #---flags for arguments---
 
-    elif len(sys.argv)==3:
-        INPUT_FILE = sys.argv[1]
-        print("WARNING: No REV_MODE defined: using default(0)")
-        REV_MODE=0
-        try:
-            OUTPUT_FOLDER = sys.argv[2]
-        except:
-            OUTPUT_FOLDER = "./output"
-    else:
-        INPUT_FILE = sys.argv[1]
-        if sys.argv[2].isdigit() and int(sys.argv[2])<=2:
-            REV_MODE=sys.argv[2]
-        else:
-            print("WARNING: Incorrect REV_MODE")
-            print(error_string)
-            exit(-3)
-        try:
-            OUTPUT_FOLDER = sys.argv[3]
-        except:
-            OUTPUT_FOLDER = "./output"
+    parser = argparse.ArgumentParser(description='Short sample app')
 
-    verbose=False
+    parser.add_argument('--i', action="store", default = False, required=True, type=str,)
+    parser.add_argument('--m', action="store", default= 0 ,type=int),
+    parser.add_argument('--o', action="store", default = "./output" , type=str)
+    parser.add_argument('--points',action="store",default = 5,type=int)
+    parser.add_argument('--interval',action="store",default = 2,type=int)
+    parser.add_argument('--v',action="store", default = False, type=bool)
+    prs=parser.parse_args()
+
+    print(prs.i,prs.o,prs.m,prs.points,prs.interval)
+    
+    INPUT_FILE=prs.i
+    OUTPUT_FOLDER=prs.o
+    REV_MODE=prs.m
+    TIME_POINTS=prs.points
+    TIME_INTERVAL=prs.interval
+    verbose=prs.v
+    
+    REACT = None 
     sbml = libsbml.SBMLReader().readSBML(INPUT_FILE)
     level=sbml.getLevel()
     REACT = sbml.getModel()
 
     
-    SB=SBML2BSW(REACT,REV_MODE,OUTPUT_FOLDER,level,verbose)
+    SB=SBML2BSW(REACT,REV_MODE,OUTPUT_FOLDER,level,verbose,TIME_POINTS,TIME_INTERVAL)
     SB.create_folder()
-    SB.react(REACT,REV_MODE,verbose)
+    SB.react(REACT,REV_MODE,verbose,TIME_POINTS,TIME_INTERVAL)
+    SB.Time(TIME_POINTS,TIME_INTERVAL)
     SB.save(verbose)
 
     #-- screen output --
